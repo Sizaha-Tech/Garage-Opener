@@ -1,36 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-guestbook-backend
+  name: python-garage-backend
   labels:
-    app: python-guestbook
+    app: python-garage
     tier: backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: python-guestbook
+      app: python-garage
       tier: backend
   template:
     metadata:
       labels:
-        app: python-guestbook
+        app: python-garage
         tier: backend
     spec:
       containers:
       - name: backend
-        image: python-guestbook-backend
+        image: python-garage-backend
         ports:
         - name: http-server
           containerPort: 8080
         env:
-        - name: PORT
-          value: "8080"
-        - name: GUESTBOOK_DB_ADDR
-          value: "python-guestbook-mongodb:27017"
         # Replace with your Firebase project ID.
         - name: FIREBASE_PROJECT_ID
-          value: '<PROJECT_ID>'
+          value: 'trusty-splice-230419'
         - name: GAE_USE_SOCKETS_HTTPLIB
           value: 'true'
 

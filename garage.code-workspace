@@ -4,5 +4,12 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"cloudcode.profile-cluster-map": {
+			"[default]": "gke_trusty-splice-230419_us-west2_standard-cluster-2"
+		},
+		"cloudcode.image-registry": {
+			"name": "gcr.io/trusty-splice-230419"
+		}
+	}
 }

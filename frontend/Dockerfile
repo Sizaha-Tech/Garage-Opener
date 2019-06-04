@@ -1,20 +1,8 @@
-# Use base golang image from Docker Hub
-FROM python:3.6
+# Use base nginx image from Docker Hub
+FROM nginx
 
-# Set the working directory to /app
-WORKDIR /app
+# Copy static web content
+COPY html /usr/share/nginx/html
 
-# copy the requirements file used for dependencies
-COPY requirements.txt .
-
-# Install any needed packages specified in requirements.txt
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
-
-# Install ptvsd for debugging
-RUN pip install ptvsd
-
-# Copy the rest of the working directory contents into the container at /app
-COPY . .
-
-# Run app.py when the container launches
-ENTRYPOINT ["python", "-m", "ptvsd", "--port", "3000", "--host", "0.0.0.0", "front.py"]
+#Copy nginx config 
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf

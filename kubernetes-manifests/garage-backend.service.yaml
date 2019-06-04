@@ -6,7 +6,7 @@ metadata:
     app: python-garage
     tier: backend
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: python-garage
     tier: backend
