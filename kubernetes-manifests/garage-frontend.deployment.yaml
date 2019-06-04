@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-garage-frontend
+  labels:
+    app: python-garage
+    tier: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-garage
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: python-garage
+        tier: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: python-garage-frontend
+        ports:
+        - name: http-server
+          containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: GUESTBOOK_API_ADDR
+          value: python-garage-backend:8080

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-garage-frontend
+  labels:
+    app: python-garage
+    tier: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: python-garage
+    tier: frontend
+  ports:
+  - port: 80
+    targetPort: http-server
