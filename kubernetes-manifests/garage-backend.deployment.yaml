@@ -29,5 +29,7 @@ spec:
           value: 'trusty-splice-230419'
         - name: GAE_USE_SOCKETS_HTTPLIB
           value: 'true'
+        - name: PORT
+          value: '8080'
 
           

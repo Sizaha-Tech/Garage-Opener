@@ -14,6 +14,7 @@
 
 import os
 import logging
+import datetime
 
 from flask import Flask, jsonify, request
 import flask_cors
@@ -30,30 +31,27 @@ import google.oauth2.id_token
 # Use the App Engine Requests adapter. This makes sure that Requests uses
 # URLFetch.
 # requests_toolbelt.adapters.appengine.monkeypatch()
-# HTTP_REQUEST = google.auth.transport.requests.Request()
+HTTP_REQUEST = google.auth.transport.requests.Request()
 
 app = Flask(__name__)
 flask_cors.CORS(app)
 
-# Use the application default credentials
-cred = credentials.ApplicationDefault()
-firebase_admin.initialize_app(cred, {
-  'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
-})
 # Use a service account
 cred = credentials.Certificate('accounts/backendServiceAccount.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 class Note(object):
-    def __init__(self, friendly_id, message, created):
+    def __init__(self, friendly_id, message, created = datetime.datetime.now()):
         self.friendly_id = friendly_id
         self.message = message
         self.created = created
     
     @staticmethod
     def from_dict(source):
-        return Note(source.friendly_id, source.message, source.created)
+        return Note(source['friendly_id'],
+                    source['message'],
+                    source['created'])
 
     def to_dict(self):
         return {
@@ -68,14 +66,16 @@ class Note(object):
             .format(self.friendly_id, self.message, self.created))
 
 class User(object):
-    def __init__(self, name, email, created):
+    def __init__(self, name, email, created = datetime.datetime.now()):
         self.name = name
         self.email = email
         self.created = created
     
     @staticmethod
     def from_dict(source):
-        return User(source.name, source.email, source.created)
+        return User(source["name"],
+                    source["email"],
+                    source["created"])
 
     def to_dict(self):
         return {
@@ -99,20 +99,19 @@ def query_database(user_id):
     first.
     """
     user_ref = db.collection(u'users')
-    notes_ref = user_ref.document(user_id).collection(u'notes')
-
-    ancestor_key = ndb.Key(Note, user_id)
-    query = Note.query(ancestor=ancestor_key).order(-Note.created)
-    notes = query.fetch()
-
+    user_doc_ref = user_ref.document(user_id)
     note_messages = []
+    try:
+        for note_doc in user_doc_ref.collection(u'notes').get():
+            note = note_doc.to_dict()
+            note_messages.append({
+                'friendly_id': note['friendly_id'],
+                'message': note['message'],
+                'created': note['created']
+            })
 
-    for note in notes:
-        note_messages.append({
-            'friendly_id': note.friendly_id,
-            'message': note.message,
-            'created': note.created
-        })
+    except google.cloud.exceptions.NotFound:
+        return note_messages
 
     return note_messages
 # [END gae_python_query_database]
@@ -158,23 +157,18 @@ def add_note():
 
     # Populates note properties according to the model,
     # with the user ID as the key name.
-    note = Note(
-        message=data['message'])
+    note = Note(friendly_id = claims.get('name', claims.get('email', 'Unknown')),
+                message=data['message'])
 
     user_id = claims['sub']
     user_ref = db.collection(u'users')
     user_doc_ref = user_ref.document(user_id)
-    try:
-        user_doc = user_doc_ref.get()
-        print(u'User data: {}'.format(user_doc.to_dict()))
-    except google.cloud.exceptions.NotFound:
-        print(u'New user!')
-        user_doc = user_doc_ref.set(
-            User(name=claims.get('name'),
-                 email = claims.get('email')).to_dict())
+    user_doc = user_doc_ref.set(
+        User(name=claims.get('name'),
+                email = claims.get('email')).to_dict())
 
-    notes_ref = user_doc.collection(u'notes')
-    notes_ref.set(note.to_dict())
+    notes_ref = user_doc_ref.collection(u'notes')
+    notes_ref.add(note.to_dict())
 
     return 'OK', 200
 
@@ -184,3 +178,13 @@ def server_error(e):
     # Log the error and stacktrace.
     logging.exception('An error occurred during a request.')
     return 'An internal error occurred.', 500
+
+if __name__ == '__main__':
+    for v in ['PORT']:
+        if os.environ.get(v) is None:
+            print("error: {} environment variable not set".format(v))
+            exit(1)
+
+    # start Flask server
+    # Flask's debug mode is unrelated to ptvsd debugger used by Cloud Code
+    app.run(debug=False, port=int(os.environ.get('PORT')), host='0.0.0.0')
