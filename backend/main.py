@@ -12,32 +12,83 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import logging
 
 from flask import Flask, jsonify, request
 import flask_cors
-from google.appengine.ext import ndb
+# from google.appengine.ext import ndb
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
 import google.auth.transport.requests
 import google.oauth2.id_token
-import requests_toolbelt.adapters.appengine
+#import requests_toolbelt.adapters.appengine
 
 # Use the App Engine Requests adapter. This makes sure that Requests uses
 # URLFetch.
-requests_toolbelt.adapters.appengine.monkeypatch()
-HTTP_REQUEST = google.auth.transport.requests.Request()
+# requests_toolbelt.adapters.appengine.monkeypatch()
+# HTTP_REQUEST = google.auth.transport.requests.Request()
 
 app = Flask(__name__)
 flask_cors.CORS(app)
 
+# Use the application default credentials
+cred = credentials.ApplicationDefault()
+firebase_admin.initialize_app(cred, {
+  'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
+})
+# Use a service account
+cred = credentials.Certificate('accounts/backendServiceAccount.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-class Note(ndb.Model):
-    """NDB model class for a user's note.
+class Note(object):
+    def __init__(self, friendly_id, message, created):
+        self.friendly_id = friendly_id
+        self.message = message
+        self.created = created
+    
+    @staticmethod
+    def from_dict(source):
+        return Note(source.friendly_id, source.message, source.created)
 
-    Key is user id from decrypted token.
-    """
-    friendly_id = ndb.StringProperty()
-    message = ndb.TextProperty()
-    created = ndb.DateTimeProperty(auto_now_add=True)
+    def to_dict(self):
+        return {
+            "friendly_id": self.friendly_id,
+            "message": self.message,
+            "created": self.created
+        }
+
+    def __repr__(self):
+        return(
+            u'Note(friendly_id={}, message={}, created={})'
+            .format(self.friendly_id, self.message, self.created))
+
+class User(object):
+    def __init__(self, name, email, created):
+        self.name = name
+        self.email = email
+        self.created = created
+    
+    @staticmethod
+    def from_dict(source):
+        return User(source.name, source.email, source.created)
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "email": self.email,
+            "created": self.created
+        }
+
+    def __repr__(self):
+        return(
+            u'User(name={}, email={}, created={})'
+            .format(self.name, self.email, self.created))
+
 
 
 # [START gae_python_query_database]
@@ -47,6 +98,9 @@ def query_database(user_id):
     Notes are ordered them by date created, with most recent note added
     first.
     """
+    user_ref = db.collection(u'users')
+    notes_ref = user_ref.document(user_id).collection(u'notes')
+
     ancestor_key = ndb.Key(Note, user_id)
     query = Note.query(ancestor=ancestor_key).order(-Note.created)
     notes = query.fetch()
@@ -105,15 +159,22 @@ def add_note():
     # Populates note properties according to the model,
     # with the user ID as the key name.
     note = Note(
-        parent=ndb.Key(Note, claims['sub']),
         message=data['message'])
 
-    # Some providers do not provide one of these so either can be used.
-    note.friendly_id = claims.get('name', claims.get('email', 'Unknown'))
-    # [END gae_python_create_entity]
+    user_id = claims['sub']
+    user_ref = db.collection(u'users')
+    user_doc_ref = user_ref.document(user_id)
+    try:
+        user_doc = user_doc_ref.get()
+        print(u'User data: {}'.format(user_doc.to_dict()))
+    except google.cloud.exceptions.NotFound:
+        print(u'New user!')
+        user_doc = user_doc_ref.set(
+            User(name=claims.get('name'),
+                 email = claims.get('email')).to_dict())
 
-    # Stores note in database.
-    note.put()
+    notes_ref = user_doc.collection(u'notes')
+    notes_ref.set(note.to_dict())
 
     return 'OK', 200
 
