@@ -89,6 +89,104 @@ class User(object):
             u'User(name={}, email={}, created={})'
             .format(self.name, self.email, self.created))
 
+class Device(object):
+    ACTIVATE = 'activate'
+    
+    def __init__(self, device_id, topic, out_sub, in_sub, created = datetime.datetime.now()):
+        self.device_id = device_id
+        self.topic = topic
+        self.out_sub = out_sub
+        self.in_sub = in_sub
+        self.created = created
+
+    @staticmethod
+    def from_dict(source):
+        return Device(source["device_id"],
+                      source["topic"],
+                      source["out_sub"],
+                      source["in_sub"],
+                      source["created"])
+
+    def to_dict(self):
+        return {
+            "device_id": self.device_id,
+            "topic": self.topic,
+            "out_sub": self.out_sub,
+            "in_sub": self.in_sub,
+            "created": self.created
+        }
+
+    def __repr__(self):
+        return(
+            u'Device(device_id={}, topic={}, out_sub={}, in_sub={}, created={})'
+            .format(self.device_id, self.topic, self.out_sub, self.in_sub, self.created))
+
+class UserEvent(object):
+    ACTIVATE = 'activate'
+    
+    def __init__(self, user_id, device_id, event_type, created = datetime.datetime.now()):
+        self.user_id = user_id
+        self.device_id = device_id
+        self.event_type = event_type
+        self.created = created
+
+    @staticmethod
+    def from_dict(source):
+        return UserEvent(source["user_id"],
+                         source["device_id"],
+                         source["event_type"],
+                         source["created"])
+
+    def to_dict(self):
+        return {
+            "user_id": self.user_id,
+            "device_id": self.device_id,
+            "event_type": self.event_type,
+            "created": self.created
+        }
+
+    def __repr__(self):
+        return(
+            u'User(user_id={}, device_id={}, event_type={}, created={})'
+            .format(self.user_id, self.device_id, self.event_type, self.created))
+
+
+def get_device(user_id, device_id):
+    """Checks if user_id owns this device_id
+    """
+    user_ref = db.collection(u'users')
+    user_doc_ref = user_ref.document(user_id)
+    device_doc_ref = user_doc_ref.collection(u'devices').document(device_id)
+    device_doc = None
+    try:
+        device_doc = device_doc_ref.get()
+    except google.cloud.exceptions.NotFound:
+        return None
+
+    if device_doc is None:
+        return None
+
+    return Device.from_dict(device_doc.to_dict())
+
+def perform_activation(user_id, device):
+    activate_device(user_id, device)
+    record_activation(user_id, device)
+    return
+
+def activate_device(user_id, device):
+    #TODO: Add PubSub
+    return
+
+
+def record_activation(user_id, device):
+    event = UserEvent(user_id, device.device_id, UserEvent.ACTIVATE)
+    user_ref = db.collection(u'users')
+    user_doc_ref = user_ref.document(user_id)
+    events_ref = user_doc_ref.collection(u'events')
+    events_ref.add(event.to_dict())
+
+def create_device(user_id, device_id, device_name):
+    
 
 
 # [START gae_python_query_database]
@@ -170,6 +268,67 @@ def add_note():
     notes_ref = user_doc_ref.collection(u'notes')
     notes_ref.add(note.to_dict())
 
+    return 'OK', 200
+
+@app.route('/activate', methods=['POST', 'PUT'])
+def activate():
+    """
+    Activated the garage opener of a given device:
+
+        {
+            "device_id": "device identifier."
+        }
+    """
+
+    # Verify Firebase auth.
+    id_token = request.headers['Authorization'].split(' ').pop()
+    claims = google.oauth2.id_token.verify_firebase_token(
+        id_token, HTTP_REQUEST)
+    if not claims:
+        return 'Unauthorized', 401
+
+    # [START gae_python_create_entity]
+    data = request.get_json()
+
+    user_id = claims['sub']
+    device_id = data['device_id']
+    device = get_device(user_id, device_id)
+    if device is None:
+        return "Device not found", 404
+
+    perform_activation(user_id, device)
+
+    return 'OK', 200
+
+@app.route('/device', methods=['POST', 'PUT'])
+def activate():
+    """
+    Creates a new device:
+
+        {
+            "device_id": "device identifier.",
+            "device_name": "device name."
+        }
+    """
+
+    # Verify Firebase auth.
+    id_token = request.headers['Authorization'].split(' ').pop()
+    claims = google.oauth2.id_token.verify_firebase_token(
+        id_token, HTTP_REQUEST)
+    if not claims:
+        return 'Unauthorized', 401
+
+    # [START gae_python_create_entity]
+    data = request.get_json()
+
+    user_id = claims['sub']
+    device_id = data['device_id']
+    device_name = data['device_name']
+    device = get_device(user_id, device_id)
+    if device is not None:
+        return "Device already exists", 409
+
+    create_device(user_id, device_id, device_name)
     return 'OK', 200
 
 
