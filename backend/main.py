@@ -109,8 +109,9 @@ class User(object):
 class Device(object):
     ACTIVATE = 'activate'
     
-    def __init__(self, device_id, topic, out_sub, in_sub, created = datetime.datetime.now()):
+    def __init__(self, device_id, account, topic, out_sub, in_sub, created = datetime.datetime.now()):
         self.device_id = device_id
+        self.account = account
         self.topic = topic
         self.out_sub = out_sub
         self.in_sub = in_sub
@@ -119,6 +120,7 @@ class Device(object):
     @staticmethod
     def from_dict(source):
         return Device(source["device_id"],
+                      source['account'],
                       source["topic"],
                       source["out_sub"],
                       source["in_sub"],
@@ -127,6 +129,7 @@ class Device(object):
     def to_dict(self):
         return {
             "device_id": self.device_id,
+            "account": self.account,
             "topic": self.topic,
             "out_sub": self.out_sub,
             "in_sub": self.in_sub,
@@ -135,8 +138,8 @@ class Device(object):
 
     def __repr__(self):
         return(
-            u'Device(device_id={}, topic={}, out_sub={}, in_sub={}, created={})'
-            .format(self.device_id, self.topic, self.out_sub, self.in_sub, self.created))
+            u'Device(device_id={}, account={}, topic={}, out_sub={}, in_sub={}, created={})'
+            .format(self.device_id, self.account, self.topic, self.out_sub, self.in_sub, self.created))
 
 class UserEvent(object):
     ACTIVATE = 'activate'
@@ -249,15 +252,28 @@ def record_activation(user_id, device):
     events_ref = user_doc_ref.collection(u'events')
     events_ref.add(event.to_dict())
 
-def create_device(user_id, device_id, device_name):
-    service_account = create_service_account(PROJECT_ID, "svc_%s" % device_id, "Garage Opener %s" % device_id)
-    service = service_account['email']
-    topic_name = "gt_%s" % user_id
+def setup_device(user_id, device_id, device_name):
+    topic_name = "gt_%s_%s" % (user_id, device_id)
+    service_account_name = "svc_%s" % device_id
+    out_sub = "app_to_iot"
+    in_sub = "iot_to_app"
+    # Create service account, topic and in/out subscriptions
+    service_account = create_service_account(PROJECT_ID, service_account_name, "Garage Opener %s" % device_id)
+    service_account_handle = service_account['email']
     create_topic(PROJECT_ID, topic_name)
-    set_pubsub_topic_policy(PROJECT_ID, topic_name, service)
-    create_subscription(PROJECT_ID, topic_name, "to_iot")
-    create_subscription(PROJECT_ID, topic_name, "from_iot")
-    return service, topic_name
+    set_pubsub_topic_policy(PROJECT_ID, topic_name, service_email)
+    create_subscription(PROJECT_ID, topic_name, out_sub)
+    create_subscription(PROJECT_ID, topic_name, in_sub)
+
+    # Store device info
+    user_ref = db.collection(u'users')
+    user_doc_ref = user_ref.document(user_id)
+    device = Device(device_id, service_account_handle, service_account_handle, topic_name, out_sub, in_sub)
+    user_doc_ref.collection(u'devices').add(device.to_dict)
+
+    return service_account_handle, topic_name
+
+
 
 # [START gae_python_query_database]
 def query_database(user_id):
@@ -371,7 +387,7 @@ def activate():
     return 'OK', 200
 
 @app.route('/device', methods=['POST', 'PUT'])
-def activate():
+def create_device():
     """
     Creates a new device:
 
@@ -398,7 +414,7 @@ def activate():
     if device is not None:
         return "Device already exists", 409
 
-    create_device(user_id, device_id, device_name)
+    setup_device(user_id, device_id, device_name)
     return 'OK', 200
 
 
