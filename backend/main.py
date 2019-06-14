@@ -24,19 +24,36 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
+from google.cloud import pubsub_v1
+
+from google.oauth2 import service_account, id_token
+import googleapiclient.discovery
 import google.auth.transport.requests
-import google.oauth2.id_token
+
 #import requests_toolbelt.adapters.appengine
 
 # Use the App Engine Requests adapter. This makes sure that Requests uses
 # URLFetch.
 # requests_toolbelt.adapters.appengine.monkeypatch()
 HTTP_REQUEST = google.auth.transport.requests.Request()
+PROJECT_ID = 'trusty-splice-230419'
 
 app = Flask(__name__)
 flask_cors.CORS(app)
 
 # Use a service account
+"""
+cred = credentials.Certificate('accounts/backendServiceAccount.json')
+"""
+
+service_cred = service_account.Credentials.from_service_account_file(
+    filename='accounts/backendServiceAccount.json',
+    scopes=['https://www.googleapis.com/auth/cloud-platform'])
+
+service_api = googleapiclient.discovery.build(
+    'iam', 'v1', credentials=service_cred)
+
+
 cred = credentials.Certificate('accounts/backendServiceAccount.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -150,6 +167,53 @@ class UserEvent(object):
             u'User(user_id={}, device_id={}, event_type={}, created={})'
             .format(self.user_id, self.device_id, self.event_type, self.created))
 
+def create_service_account(project_id, service_name, display_name):
+    """Creates a service account."""
+    service_account = service_api.projects().serviceAccounts().create(
+        name='projects/' + project_id,
+        body={
+            'accountId': service_name,
+            'serviceAccount': {
+                'displayName': display_name
+            }
+        }).execute()
+    logging.info('Created service account: ' + service_account['email'])
+    return service_account
+
+def create_topic(project_id, topic_name):
+    """Create a new Pub/Sub topic."""
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, topic_name)
+    topic = publisher.create_topic(topic_path)
+
+def create_subscription(project_id, topic_name, subscription_name):
+    """Create a new pull subscription on the given topic."""
+    subscriber = pubsub_v1.SubscriberClient()
+    topic_path = subscriber.topic_path(project_id, topic_name)
+    subscription_path = subscriber.subscription_path(
+        project_id, subscription_name)
+    subscription = subscriber.create_subscription(
+        subscription_path, topic_path)
+
+def set_pubsub_topic_policy(project, topic_name, iot_service_account):
+    """Sets the IAM policy for a topic."""
+    client = pubsub_v1.PublisherClient()
+    topic_path = client.topic_path(project, topic_name)
+    policy = client.get_iam_policy(topic_path)
+    # Add the service account policy for the topic.
+    service_member = "serviceAccount:%s" % iot_service_account
+    policy.bindings.add(
+        role='roles/pubsub.viewer',
+        members=[service_member])
+    policy.bindings.add(
+        role='roles/pubsub.admin',
+        members=[service_member])
+    policy.bindings.add(
+        role='roles/pubsub.editor',
+        members=[service_member])
+    # Set the policy
+    policy = client.set_iam_policy(topic_path, policy)
+
 
 def get_device(user_id, device_id):
     """Checks if user_id owns this device_id
@@ -186,8 +250,14 @@ def record_activation(user_id, device):
     events_ref.add(event.to_dict())
 
 def create_device(user_id, device_id, device_name):
-    
-
+    service_account = create_service_account(PROJECT_ID, "svc_%s" % device_id, "Garage Opener %s" % device_id)
+    service = service_account['email']
+    topic_name = "gt_%s" % user_id
+    create_topic(PROJECT_ID, topic_name)
+    set_pubsub_topic_policy(PROJECT_ID, topic_name, service)
+    create_subscription(PROJECT_ID, topic_name, "to_iot")
+    create_subscription(PROJECT_ID, topic_name, "from_iot")
+    return service, topic_name
 
 # [START gae_python_query_database]
 def query_database(user_id):
