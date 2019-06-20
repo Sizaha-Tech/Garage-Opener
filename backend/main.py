@@ -269,7 +269,8 @@ def setup_device(user_id, device_id, device_name):
     user_ref = db.collection(u'users')
     user_doc_ref = user_ref.document(user_id)
     device = Device(device_id, service_account_handle, topic_name, out_sub, in_sub)
-    user_doc_ref.collection(u'devices').add(device.to_dict())
+    device_ref = user_doc_ref.collection(u'devices').document(device_id)
+    device_ref.set(device.to_dict())
 
     return service_account_handle, topic_name
 
@@ -342,7 +343,7 @@ def activate():
     user_id = claims['sub']
     device_id = data['device_id']
     device = get_device(user_id, device_id)
-    if device is None or not device.exists:
+    if device is None:
         return "Device not found", 404
 
     perform_activation(user_id, device)
