@@ -127,22 +127,29 @@ $(function(){
   });
 
   // Save a note to the backend
-  var saveNoteBtn = $('#add-note');
-  saveNoteBtn.click(function(event) {
+  var createBtn = $('#create-device');
+  createBtn.click(function(event) {
     event.preventDefault();
 
-    var noteField = $('#note-content');
-    var note = noteField.val();
-    noteField.val("");
+    var deviceIdField = $('#device-id');
+    var device_id = deviceIdField.val();
+    deviceIdField.val("");
+
+    var deviceNameField = $('#device-name');
+    var device_name = deviceNameField.val();
+    deviceNameField.val("");
 
     /* Send note data to backend, storing in database with existing data
     associated with userIdToken */
-    $.ajax(backendHostUrl + '/notes', {
+    $.ajax(backendHostUrl + '/device', {
       headers: {
         'Authorization': 'Bearer ' + userIdToken
       },
       method: 'POST',
-      data: JSON.stringify({'message': note}),
+      data: JSON.stringify({
+        'device_id': device_id,
+        'device_name': device_name
+      }),
       contentType : 'application/json'
     }).then(function(){
       // Refresh notebook display.

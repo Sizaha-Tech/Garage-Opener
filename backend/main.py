@@ -230,7 +230,7 @@ def get_device(user_id, device_id):
     except google.cloud.exceptions.NotFound:
         return None
 
-    if device_doc is None:
+    if device_doc is None or not device_doc.exists:
         return None
 
     return Device.from_dict(device_doc.to_dict())
@@ -253,23 +253,23 @@ def record_activation(user_id, device):
     events_ref.add(event.to_dict())
 
 def setup_device(user_id, device_id, device_name):
-    topic_name = "gt_%s_%s" % (user_id, device_id)
-    service_account_name = "svc_%s" % device_id
-    out_sub = "app_to_iot"
-    in_sub = "iot_to_app"
+    topic_name = "garage-topic-%s-%s" % (user_id, device_id)
+    service_account_name = "garage-svc-%s" % device_id
+    out_sub = "app-to-iot-%s" % device_id
+    in_sub = "iot-to-app-%s" % device_id
     # Create service account, topic and in/out subscriptions
     service_account = create_service_account(PROJECT_ID, service_account_name, "Garage Opener %s" % device_id)
     service_account_handle = service_account['email']
     create_topic(PROJECT_ID, topic_name)
-    set_pubsub_topic_policy(PROJECT_ID, topic_name, service_email)
+    set_pubsub_topic_policy(PROJECT_ID, topic_name, service_account_handle)
     create_subscription(PROJECT_ID, topic_name, out_sub)
     create_subscription(PROJECT_ID, topic_name, in_sub)
 
     # Store device info
     user_ref = db.collection(u'users')
     user_doc_ref = user_ref.document(user_id)
-    device = Device(device_id, service_account_handle, service_account_handle, topic_name, out_sub, in_sub)
-    user_doc_ref.collection(u'devices').add(device.to_dict)
+    device = Device(device_id, service_account_handle, topic_name, out_sub, in_sub)
+    user_doc_ref.collection(u'devices').add(device.to_dict())
 
     return service_account_handle, topic_name
 
@@ -319,43 +319,6 @@ def list_notes():
     return jsonify(notes)
 
 
-@app.route('/notes', methods=['POST', 'PUT'])
-def add_note():
-    """
-    Adds a note to the user's notebook. The request should be in this format:
-
-        {
-            "message": "note message."
-        }
-    """
-
-    # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
-        return 'Unauthorized', 401
-
-    # [START gae_python_create_entity]
-    data = request.get_json()
-
-    # Populates note properties according to the model,
-    # with the user ID as the key name.
-    note = Note(friendly_id = claims.get('name', claims.get('email', 'Unknown')),
-                message=data['message'])
-
-    user_id = claims['sub']
-    user_ref = db.collection(u'users')
-    user_doc_ref = user_ref.document(user_id)
-    user_doc = user_doc_ref.set(
-        User(name=claims.get('name'),
-                email = claims.get('email')).to_dict())
-
-    notes_ref = user_doc_ref.collection(u'notes')
-    notes_ref.add(note.to_dict())
-
-    return 'OK', 200
-
 @app.route('/activate', methods=['POST', 'PUT'])
 def activate():
     """
@@ -379,7 +342,7 @@ def activate():
     user_id = claims['sub']
     device_id = data['device_id']
     device = get_device(user_id, device_id)
-    if device is None:
+    if device is None or not device.exists:
         return "Device not found", 404
 
     perform_activation(user_id, device)
