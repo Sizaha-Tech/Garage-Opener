@@ -108,13 +108,18 @@ class User(object):
 class Device(object):
     ACTIVATE = 'activate'
     
-    def __init__(self, device_id, account, out_topic, in_topic, out_sub, in_sub, created = datetime.datetime.now()):
+    def __init__(self, device_id, account, out_topic, in_topic,
+                 out_sub, in_sub, device_key, app_key, app_id,
+                 created = datetime.datetime.now()):
         self.device_id = device_id
         self.account = account
         self.out_topic = out_topic
         self.in_topic = in_topic
         self.out_sub = out_sub
         self.in_sub = in_sub
+        self.device_key = device_key
+        self.app_key = app_key
+        self.app_id = app_id
         self.created = created
 
     @staticmethod
@@ -125,6 +130,9 @@ class Device(object):
                       source["in_topic"],
                       source["out_sub"],
                       source["in_sub"],
+                      source["device_key"],
+                      source["app_key"],
+                      source["app_id"],
                       source["created"])
 
     def to_dict(self):
@@ -135,13 +143,16 @@ class Device(object):
             "in_topic": self.in_topic,
             "out_sub": self.out_sub,
             "in_sub": self.in_sub,
+            "device_key": self.device_key,
+            "app_key": self.app_key,
+            "app_id": self.app_id,
             "created": self.created
         }
 
     def __repr__(self):
         return(
-            u'Device(device_id={}, account={}, out_topic={}, in_topic={}, out_sub={}, in_sub={}, created={})'
-            .format(self.device_id, self.account, self.out_topic, self.in_topic, self.out_sub, self.in_sub, self.created))
+            u'Device(device_id={}, account={}, out_topic={}, in_topic={}, out_sub={}, in_sub={}, app_id={}, created={})'
+            .format(self.device_id, self.account, self.out_topic, self.in_topic, self.out_sub, self.in_sub, self.app_id, self.created))
 
 class UserEvent(object):
     ACTIVATE = 'activate'
@@ -184,6 +195,14 @@ def create_service_account(project_id, service_name, display_name):
         }).execute()
     logging.info('Created service account: ' + service_account['email'])
     return service_account
+
+def create_service_key(service_account_email):
+    """Creates a key for a service account."""
+    # pylint: disable=no-member
+    key = service_api.projects().serviceAccounts().keys().create(
+        name='projects/-/serviceAccounts/' + service_account_email, body={}
+        ).execute()
+    return key
 
 def create_topic(project_id, topic_name):
     """Create a new Pub/Sub topic."""
@@ -258,18 +277,21 @@ def record_activation(user_id, device):
     events_ref = user_doc_ref.collection(u'events')
     events_ref.add(event.to_dict())
 
-def setup_device(user_id, device_id, device_name):
-    in_topic_name = "garage-in-topic-%s-%s" % (user_id, device_id)
-    out_topic_name = "garage-out-topic-%s-%s" % (user_id, device_id)
-    service_account_name = "garage-svc-%s" % device_id
-    app_account_name = "garage-app-%s" % user_id
-    out_sub = "app-to-iot-%s" % device_id
-    in_sub = "iot-to-app-%s" % device_id
+def setup_device(user_id, app_id, device_id, device_name):
+    in_topic_name = "g-in-topic-%s-%s" % (user_id, device_id)
+    out_topic_name = "g-out-topic-%s-%s" % (user_id, device_id)
+    service_account_name = "g-svc-%s" % device_id
+    app_account_name = "g-app-%s" % app_id
+    out_sub = "out-sub-%s" % device_id
+    in_sub = "in-sub-%s" % device_id
     # Create service account, topic and in/out subscriptions
     service_account = create_service_account(PROJECT_ID, service_account_name, "Garage Opener %s" % device_id)
     app_account = create_service_account(PROJECT_ID, app_account_name, "Garage App %s" % user_id)
     service_account_handle = service_account['email']
     app_account_handle = app_account['email']
+    service_key = create_service_key(service_account_handle)
+    app_key = create_service_key(app_account_handle)
+
     create_topic(PROJECT_ID, in_topic_name)
     create_topic(PROJECT_ID, out_topic_name)
  
@@ -284,7 +306,9 @@ def setup_device(user_id, device_id, device_name):
     # Store device info
     user_ref = db.collection(u'users')
     user_doc_ref = user_ref.document(user_id)
-    device = Device(device_id, service_account_handle, out_topic_name, in_topic_name, out_sub, in_sub)
+    device = Device(device_id, service_account_handle,
+        out_topic_name, in_topic_name, out_sub, in_sub,
+        json.dumps(service_key), json.dumps(app_key), app_id)
     device_ref = user_doc_ref.collection(u'devices').document(device_id)
     device_dict = device.to_dict()
     device_ref.set(device_dict)
@@ -377,6 +401,7 @@ def create_device():
     Creates a new device:
 
         {
+            "app_id": "app install instance identifier.",
             "device_id": "device identifier.",
             "device_name": "device name."
         }
@@ -389,17 +414,16 @@ def create_device():
     if not claims:
         return 'Unauthorized', 401
 
-    # [START gae_python_create_entity]
-    data = request.get_json()
-
     user_id = claims['sub']
+
+    data = request.get_json()
     device_id = data['device_id']
     device_name = data['device_name']
     device = get_device(user_id, device_id)
     if device is not None:
         return "Device already exists", 409
 
-    device_dict = setup_device(user_id, device_id, device_name)
+    device_dict = setup_device(user_id, data['app_id'], device_id, device_name)
     return jsonify(device_dict), 200
 
 @app.route('/device/<device_id>/run', methods=['POST', 'PUT'])
@@ -427,7 +451,7 @@ def open_device(device_id):
 
     user_id = claims['sub']
     device = get_device(user_id, device_id)
-    if device not None:
+    if device is None:
         return "Device does not exists", 404
 
     send_open_command_to_device(device)

@@ -139,6 +139,10 @@ $(function(){
     var device_name = deviceNameField.val();
     deviceNameField.val("");
 
+    var appIdField = $('#app-id');
+    var app_id = appIdField.val();
+    appIdField.val("");
+
     /* Send note data to backend, storing in database with existing data
     associated with userIdToken */
     $.ajax(backendHostUrl + '/device', {
@@ -147,6 +151,7 @@ $(function(){
       },
       method: 'POST',
       data: JSON.stringify({
+        'app_id': app_id,
         'device_id': device_id,
         'device_name': device_name
       }),
