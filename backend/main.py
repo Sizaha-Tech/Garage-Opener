@@ -16,7 +16,7 @@ import os
 import logging
 import datetime
 
-from flask import Flask, jsonify, request
+from flask import Flask, json, jsonify, request
 import flask_cors
 # from google.appengine.ext import ndb
 
@@ -37,19 +37,18 @@ import google.auth.transport.requests
 # requests_toolbelt.adapters.appengine.monkeypatch()
 HTTP_REQUEST = google.auth.transport.requests.Request()
 PROJECT_ID = 'trusty-splice-230419'
+PUBSUB_TIMEOUT = 60     # seconds
+
+# Device commands
+COMMAND_OPEN = 'OPEN'
 
 app = Flask(__name__)
 flask_cors.CORS(app)
 
 # Use a service account
-"""
-cred = credentials.Certificate('accounts/backendServiceAccount.json')
-"""
-
 service_cred = service_account.Credentials.from_service_account_file(
     filename='accounts/backendServiceAccount.json',
     scopes=['https://www.googleapis.com/auth/cloud-platform'])
-
 service_api = googleapiclient.discovery.build(
     'iam', 'v1', credentials=service_cred)
 
@@ -109,10 +108,11 @@ class User(object):
 class Device(object):
     ACTIVATE = 'activate'
     
-    def __init__(self, device_id, account, topic, out_sub, in_sub, created = datetime.datetime.now()):
+    def __init__(self, device_id, account, out_topic, in_topic, out_sub, in_sub, created = datetime.datetime.now()):
         self.device_id = device_id
         self.account = account
-        self.topic = topic
+        self.out_topic = out_topic
+        self.in_topic = in_topic
         self.out_sub = out_sub
         self.in_sub = in_sub
         self.created = created
@@ -121,7 +121,8 @@ class Device(object):
     def from_dict(source):
         return Device(source["device_id"],
                       source['account'],
-                      source["topic"],
+                      source["out_topic"],
+                      source["in_topic"],
                       source["out_sub"],
                       source["in_sub"],
                       source["created"])
@@ -130,7 +131,8 @@ class Device(object):
         return {
             "device_id": self.device_id,
             "account": self.account,
-            "topic": self.topic,
+            "out_topic": self.out_topic,
+            "in_topic": self.in_topic,
             "out_sub": self.out_sub,
             "in_sub": self.in_sub,
             "created": self.created
@@ -138,8 +140,8 @@ class Device(object):
 
     def __repr__(self):
         return(
-            u'Device(device_id={}, account={}, topic={}, out_sub={}, in_sub={}, created={})'
-            .format(self.device_id, self.account, self.topic, self.out_sub, self.in_sub, self.created))
+            u'Device(device_id={}, account={}, out_topic={}, in_topic={}, out_sub={}, in_sub={}, created={})'
+            .format(self.device_id, self.account, self.out_topic, self.in_topic, self.out_sub, self.in_sub, self.created))
 
 class UserEvent(object):
     ACTIVATE = 'activate'
@@ -198,22 +200,26 @@ def create_subscription(project_id, topic_name, subscription_name):
     subscription = subscriber.create_subscription(
         subscription_path, topic_path)
 
-def set_pubsub_topic_policy(project, topic_name, iot_service_account):
+def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_account):
     """Sets the IAM policy for a topic."""
     client = pubsub_v1.PublisherClient()
     topic_path = client.topic_path(project, topic_name)
     policy = client.get_iam_policy(topic_path)
     # Add the service account policy for the topic.
-    service_member = "serviceAccount:%s" % iot_service_account
+    publisher_account_member = "serviceAccount:%s" % publisher_account
+    subscriber_account_member = "serviceAccount:%s" % subscriber_account
     policy.bindings.add(
         role='roles/pubsub.viewer',
-        members=[service_member])
+        members=[publisher_account_member, subscriber_account_member])
     policy.bindings.add(
         role='roles/pubsub.admin',
-        members=[service_member])
+        members=[publisher_account_member])
     policy.bindings.add(
         role='roles/pubsub.editor',
-        members=[service_member])
+        members=[publisher_account_member])
+    policy.bindings.add(
+        role='roles/pubsub.subscriber',
+        members=[subscriber_account_member])
     # Set the policy
     policy = client.set_iam_policy(topic_path, policy)
 
@@ -253,29 +259,44 @@ def record_activation(user_id, device):
     events_ref.add(event.to_dict())
 
 def setup_device(user_id, device_id, device_name):
-    topic_name = "garage-topic-%s-%s" % (user_id, device_id)
+    in_topic_name = "garage-in-topic-%s-%s" % (user_id, device_id)
+    out_topic_name = "garage-out-topic-%s-%s" % (user_id, device_id)
     service_account_name = "garage-svc-%s" % device_id
+    app_account_name = "garage-app-%s" % user_id
     out_sub = "app-to-iot-%s" % device_id
     in_sub = "iot-to-app-%s" % device_id
     # Create service account, topic and in/out subscriptions
     service_account = create_service_account(PROJECT_ID, service_account_name, "Garage Opener %s" % device_id)
+    app_account = create_service_account(PROJECT_ID, app_account_name, "Garage App %s" % user_id)
     service_account_handle = service_account['email']
-    create_topic(PROJECT_ID, topic_name)
-    set_pubsub_topic_policy(PROJECT_ID, topic_name, service_account_handle)
-    create_subscription(PROJECT_ID, topic_name, out_sub)
-    create_subscription(PROJECT_ID, topic_name, in_sub)
+    app_account_handle = app_account['email']
+    create_topic(PROJECT_ID, in_topic_name)
+    create_topic(PROJECT_ID, out_topic_name)
+ 
+    service_policy_member = "serviceAccount:%s" % service_account_handle
+    app_policy_member = "serviceAccount:%s" % app_account_handle
+    set_pubsub_topic_policy(PROJECT_ID, in_topic_name, publisher_account=app_account_handle, subscriber_account=service_account_handle)
+    set_pubsub_topic_policy(PROJECT_ID, out_topic_name, publisher_account=service_account_handle, subscriber_account=app_account_handle)
+ 
+    create_subscription(PROJECT_ID, in_topic_name, in_sub)
+    create_subscription(PROJECT_ID, out_topic_name, out_sub)
 
     # Store device info
     user_ref = db.collection(u'users')
     user_doc_ref = user_ref.document(user_id)
-    device = Device(device_id, service_account_handle, topic_name, out_sub, in_sub)
+    device = Device(device_id, service_account_handle, out_topic_name, in_topic_name, out_sub, in_sub)
     device_ref = user_doc_ref.collection(u'devices').document(device_id)
-    device_ref.set(device.to_dict())
+    device_dict = device.to_dict()
+    device_ref.set(device_dict)
+    return device_dict
 
-    return service_account_handle, topic_name
-
-
-
+def send_open_command_to_device(device):
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, device.in_topic)
+    data = {'command': COMMAND_OPEN}
+    future = publisher.publish(topic_path, data = json.dumps(data))
+    res = future.result(PUBSUB_TIMEOUT)
+    
 # [START gae_python_query_database]
 def query_database(user_id):
     """Fetches all notes associated with user_id.
@@ -378,8 +399,39 @@ def create_device():
     if device is not None:
         return "Device already exists", 409
 
-    setup_device(user_id, device_id, device_name)
-    return 'OK', 200
+    device_dict = setup_device(user_id, device_id, device_name)
+    return jsonify(device_dict), 200
+
+@app.route('/device/<device_id>/run', methods=['POST', 'PUT'])
+def open_device(device_id):
+    """
+    Opens garage on specific device:
+
+        {
+            "command": "device command.",
+        }
+    """
+
+    # Verify Firebase auth.
+    id_token = request.headers['Authorization'].split(' ').pop()
+    claims = google.oauth2.id_token.verify_firebase_token(
+        id_token, HTTP_REQUEST)
+    if not claims:
+        return 'Unauthorized', 401
+
+    data = request.get_json()
+
+    command = data['command']
+    if command != COMMAND_OPEN :
+        return 'Unknown command', 400
+
+    user_id = claims['sub']
+    device = get_device(user_id, device_id)
+    if device not None:
+        return "Device does not exists", 404
+
+    send_open_command_to_device(device)
+    return jsonify(device_dict), 200
 
 
 @app.errorhandler(500)
