@@ -321,6 +321,7 @@ def send_open_command_to_device(device):
     # Data must be a bytestring
     data = data.encode('utf-8')
     future = publisher.publish(topic_path, data = data)
+    # future.result(PUBSUB_TIMEOUT)
     future.result(PUBSUB_TIMEOUT)
     
 def get_devices(user_id):
