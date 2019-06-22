@@ -82,28 +82,31 @@ class Note(object):
             .format(self.friendly_id, self.message, self.created))
 
 class User(object):
-    def __init__(self, name, email, created = datetime.datetime.now()):
-        self.name = name
+    def __init__(self, id, email, name, created = datetime.datetime.now()):
+        self.id = id
         self.email = email
+        self.name = name
         self.created = created
     
     @staticmethod
     def from_dict(source):
-        return User(source["name"],
+        return User(source["id"],
                     source["email"],
+                    source["name"],
                     source["created"])
 
     def to_dict(self):
         return {
-            "name": self.name,
+            "id": self.id,
             "email": self.email,
+            "name": self.name,
             "created": self.created
         }
 
     def __repr__(self):
         return(
-            u'User(name={}, email={}, created={})'
-            .format(self.name, self.email, self.created))
+            u'User(id={}, email={}, name={}, created={})'
+            .format(self.id, self.name, self.email, self.created))
 
 class Device(object):
     ACTIVATE = 'activate'
@@ -157,22 +160,22 @@ class Device(object):
 class UserEvent(object):
     ACTIVATE = 'activate'
     
-    def __init__(self, user_id, device_id, event_type, created = datetime.datetime.now()):
-        self.user_id = user_id
+    def __init__(self, user_email, device_id, event_type, created = datetime.datetime.now()):
+        self.user_email = user_email
         self.device_id = device_id
         self.event_type = event_type
         self.created = created
 
     @staticmethod
     def from_dict(source):
-        return UserEvent(source["user_id"],
+        return UserEvent(source["user_email"],
                          source["device_id"],
                          source["event_type"],
                          source["created"])
 
     def to_dict(self):
         return {
-            "user_id": self.user_id,
+            "user_email": self.user_email,
             "device_id": self.device_id,
             "event_type": self.event_type,
             "created": self.created
@@ -180,8 +183,8 @@ class UserEvent(object):
 
     def __repr__(self):
         return(
-            u'User(user_id={}, device_id={}, event_type={}, created={})'
-            .format(self.user_id, self.device_id, self.event_type, self.created))
+            u'UserEvent(user_email={}, device_id={}, event_type={}, created={})'
+            .format(self.user_email, self.device_id, self.event_type, self.created))
 
 def create_service_account(project_id, service_name, display_name):
     """Creates a service account."""
@@ -243,11 +246,11 @@ def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_a
     policy = client.set_iam_policy(topic_path, policy)
 
 
-def get_device(user_id, device_id):
-    """Checks if user_id owns this device_id
+def get_device(user_email, device_id):
+    """Checks if user_email owns this device_id
     """
     user_ref = db.collection(u'users')
-    user_doc_ref = user_ref.document(user_id)
+    user_doc_ref = user_ref.document(user_email)
     device_doc_ref = user_doc_ref.collection(u'devices').document(device_id)
     device_doc = None
     try:
@@ -260,24 +263,15 @@ def get_device(user_id, device_id):
 
     return Device.from_dict(device_doc.to_dict())
 
-def perform_activation(user_id, device):
-    activate_device(user_id, device)
-    record_activation(user_id, device)
-    return
 
-def activate_device(user_id, device):
-    #TODO: Add PubSub
-    return
-
-
-def record_activation(user_id, device):
-    event = UserEvent(user_id, device.device_id, UserEvent.ACTIVATE)
+def record_activation(user_email, device):
+    event = UserEvent(user_email, device.device_id, UserEvent.ACTIVATE)
     user_ref = db.collection(u'users')
-    user_doc_ref = user_ref.document(user_id)
+    user_doc_ref = user_ref.document(user_email)
     events_ref = user_doc_ref.collection(u'events')
     events_ref.add(event.to_dict())
 
-def setup_device(user_id, app_id, device_id, device_name):
+def setup_device(user_id, user_email, app_id, device_id, device_name):
     in_topic_name = "g-in-topic-%s-%s" % (user_id, device_id)
     out_topic_name = "g-out-topic-%s-%s" % (user_id, device_id)
     service_account_name = "g-svc-%s" % device_id
@@ -286,7 +280,7 @@ def setup_device(user_id, app_id, device_id, device_name):
     in_sub = "in-sub-%s" % device_id
     # Create service account, topic and in/out subscriptions
     service_account = create_service_account(PROJECT_ID, service_account_name, "Garage Opener %s" % device_id)
-    app_account = create_service_account(PROJECT_ID, app_account_name, "Garage App %s" % user_id)
+    app_account = create_service_account(PROJECT_ID, app_account_name, "Garage App %s" % user_email)
     service_account_handle = service_account['email']
     app_account_handle = app_account['email']
     service_key = create_service_key(service_account_handle)
@@ -305,7 +299,7 @@ def setup_device(user_id, app_id, device_id, device_name):
 
     # Store device info
     user_ref = db.collection(u'users')
-    user_doc_ref = user_ref.document(user_id)
+    user_doc_ref = user_ref.document(user_email)
     device = Device(device_id, service_account_handle,
         out_topic_name, in_topic_name, out_sub, in_sub,
         json.dumps(service_key), json.dumps(app_key), app_id)
@@ -324,14 +318,14 @@ def send_open_command_to_device(device):
     # future.result(PUBSUB_TIMEOUT)
     future.result(PUBSUB_TIMEOUT)
     
-def get_devices(user_id):
-    """Fetches all devices associated with user_id.
+def get_devices(user_email):
+    """Fetches all devices associated with user_email.
 
     Devices are ordered them by date created, with most recent note added
     first.
     """
     user_ref = db.collection(u'users')
-    user_doc_ref = user_ref.document(user_id)
+    user_doc_ref = user_ref.document(user_email)
     device_messages = []
     try:
         for device_doc in user_doc_ref.collection(u'devices').get():
@@ -356,7 +350,7 @@ def list_notes():
         return 'Unauthorized', 401
     # [END gae_python_verify_token]
 
-    devices = get_devices(claims['sub'])
+    devices = get_devices(claims['email'])
     return jsonify(devices)
 
 
@@ -380,13 +374,13 @@ def activate():
     # [START gae_python_create_entity]
     data = request.get_json()
 
-    user_id = claims['sub']
+    user_email = claims['email']
     device_id = data['device_id']
-    device = get_device(user_id, device_id)
+    device = get_device(user_email, device_id)
     if device is None:
         return "Device not found", 404
 
-    perform_activation(user_id, device)
+    perform_activation(user_email, device)
 
     return 'OK', 200
 
@@ -410,15 +404,23 @@ def create_device():
         return 'Unauthorized', 401
 
     user_id = claims['sub']
+    user_email = claims.get('email')
+    user_name = claims.get('name')
+    user_ref = db.collection(u'users')
+    user_doc_ref = user_ref.document(user_email)
+    user_doc = user_doc_ref.set(
+        User(id = user_id,
+             email = user_email,
+             name = user_name).to_dict())
 
     data = request.get_json()
     device_id = data['device_id']
     device_name = data['device_name']
-    device = get_device(user_id, device_id)
+    device = get_device(user_email, device_id)
     if device is not None:
         return "Device already exists", 409
 
-    device_dict = setup_device(user_id, data['app_id'], device_id, device_name)
+    device_dict = setup_device(user_id, user_email, data['app_id'], device_id, device_name)
     return jsonify(device_dict), 200
 
 @app.route('/device/<device_id>/run', methods=['POST', 'PUT'])
@@ -444,12 +446,13 @@ def open_device(device_id):
     if command != COMMAND_OPEN :
         return 'Unknown command', 400
 
-    user_id = claims['sub']
-    device = get_device(user_id, device_id)
+    user_email = claims['email']
+    device = get_device(user_email, device_id)
     if device is None:
         return "Device does not exists", 404
 
     send_open_command_to_device(device)
+    record_activation(user_email, device)
     return jsonify(device.to_dict()), 200
 
 
