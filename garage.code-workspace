@@ -10,6 +10,9 @@
 		},
 		"cloudcode.image-registry": {
 			"name": "gcr.io/trusty-splice-230419"
+		},
+		"cloudcode.profile-registry-map": {
+			"[default]": "gcr.io/trusty-splice-230419"
 		}
 	}
 }

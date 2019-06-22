@@ -10,6 +10,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+var g_devices = null;
 
 $(function(){
   // This is the host for the backend.
@@ -35,7 +36,6 @@ $(function(){
 
   // This is passed into the backend to authenticate the user.
   var userIdToken = null;
-
   // Firebase log-in
   function configureFirebaseLogin() {
 
@@ -55,7 +55,7 @@ $(function(){
           userIdToken = idToken;
 
           /* Now that the user is authenicated, fetch the notes. */
-          fetchNotes();
+          fetchDevices();
 
           $('#user').text(welcomeName);
           $('#logged-in').show();
@@ -97,18 +97,19 @@ $(function(){
 
   // [START gae_python_fetch_notes]
   // Fetch notes from the backend.
-  function fetchNotes() {
-    $.ajax(backendHostUrl + '/notes', {
+  function fetchDevices() {
+    $.ajax(backendHostUrl + '/devices', {
       /* Set header for the XMLHttpRequest to get data from the web server
       associated with userIdToken */
       headers: {
         'Authorization': 'Bearer ' + userIdToken
       }
     }).then(function(data){
-      $('#notes-container').empty();
+      $('#devices-container').empty();
+      g_devices = data;
       // Iterate over user data to display user's notes from database.
-      data.forEach(function(note){
-        $('#notes-container').append($('<p>').text(note.message));
+      data.forEach(function(device){
+        $('#devices-container').append($('<p>').text(device.device_id+'/'+device.out_topic));
       });
     });
   }
@@ -158,7 +159,34 @@ $(function(){
       contentType : 'application/json'
     }).then(function(){
       // Refresh notebook display.
-      fetchNotes();
+      fetchDevices();
+    });
+
+  });
+
+  // Save a note to the backend
+  var openBtn = $('#open-device');
+  openBtn.click(function(event) {
+    event.preventDefault();
+
+    var deviceIdField = $('#device-id');
+    var device_id = deviceIdField.val();
+    deviceIdField.val("");
+
+    /* Send note data to backend, storing in database with existing data
+    associated with userIdToken */
+    $.ajax(backendHostUrl + '/device/'+device_id+'/run', {
+      headers: {
+        'Authorization': 'Bearer ' + userIdToken
+      },
+      method: 'POST',
+      data: JSON.stringify({
+        'command': 'OPEN'
+      }),
+      contentType : 'application/json'
+    }).then(function(){
+      // Refresh notebook display.
+      fetchDevices();
     });
 
   });

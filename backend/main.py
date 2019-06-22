@@ -316,38 +316,33 @@ def setup_device(user_id, app_id, device_id, device_name):
 
 def send_open_command_to_device(device):
     publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, device.in_topic)
-    data = {'command': COMMAND_OPEN}
-    future = publisher.publish(topic_path, data = json.dumps(data))
-    res = future.result(PUBSUB_TIMEOUT)
+    topic_path = publisher.topic_path(PROJECT_ID, device.in_topic)
+    data = u'{}'.format(json.dumps({'command': COMMAND_OPEN}))
+    # Data must be a bytestring
+    data = data.encode('utf-8')
+    future = publisher.publish(topic_path, data = data)
+    future.result(PUBSUB_TIMEOUT)
     
-# [START gae_python_query_database]
-def query_database(user_id):
-    """Fetches all notes associated with user_id.
+def get_devices(user_id):
+    """Fetches all devices associated with user_id.
 
-    Notes are ordered them by date created, with most recent note added
+    Devices are ordered them by date created, with most recent note added
     first.
     """
     user_ref = db.collection(u'users')
     user_doc_ref = user_ref.document(user_id)
-    note_messages = []
+    device_messages = []
     try:
-        for note_doc in user_doc_ref.collection(u'notes').get():
-            note = note_doc.to_dict()
-            note_messages.append({
-                'friendly_id': note['friendly_id'],
-                'message': note['message'],
-                'created': note['created']
-            })
+        for device_doc in user_doc_ref.collection(u'devices').get():
+            device_messages.append(device_doc.to_dict())
 
     except google.cloud.exceptions.NotFound:
-        return note_messages
+        return device_messages
 
-    return note_messages
-# [END gae_python_query_database]
+    return device_messages
 
 
-@app.route('/notes', methods=['GET'])
+@app.route('/devices', methods=['GET'])
 def list_notes():
     """Returns a list of notes added by the current Firebase user."""
 
@@ -360,9 +355,8 @@ def list_notes():
         return 'Unauthorized', 401
     # [END gae_python_verify_token]
 
-    notes = query_database(claims['sub'])
-
-    return jsonify(notes)
+    devices = get_devices(claims['sub'])
+    return jsonify(devices)
 
 
 @app.route('/activate', methods=['POST', 'PUT'])
@@ -455,7 +449,7 @@ def open_device(device_id):
         return "Device does not exists", 404
 
     send_open_command_to_device(device)
-    return jsonify(device_dict), 200
+    return jsonify(device.to_dict()), 200
 
 
 @app.errorhandler(500)
