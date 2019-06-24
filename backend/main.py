@@ -203,7 +203,10 @@ def create_service_key(service_account_email):
     """Creates a key for a service account."""
     # pylint: disable=no-member
     key = service_api.projects().serviceAccounts().keys().create(
-        name='projects/-/serviceAccounts/' + service_account_email, body={}
+        name='projects/-/serviceAccounts/' + service_account_email,
+        body={
+            'privateKeyType', 'TYPE_PKCS12_FILE'
+        }
         ).execute()
     return key
 
@@ -244,6 +247,22 @@ def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_a
         members=[subscriber_account_member])
     # Set the policy
     policy = client.set_iam_policy(topic_path, policy)
+
+def set_pubsub_subscription_policy(project, subscription_name, subscription_account):
+    """Sets the IAM policy for a subscription."""
+    client = pubsub_v1.PublisherClient()
+    subscription_path = client.subscription_path(project, subscription_name)
+    policy = client.get_iam_policy(subscription_path)
+    # Add the service account policy for the topic.
+    subscription_account_member = "serviceAccount:%s" % subscription_account
+    policy.bindings.add(
+        role='roles/pubsub.viewer',
+        members=[subscription_account_member])
+    policy.bindings.add(
+        role='roles/pubsub.subscriber',
+        members=[subscription_account_member])
+    # Set the policy
+    policy = client.set_iam_policy(subscription_path, policy)
 
 
 def get_device(user_email, device_id):
@@ -289,13 +308,13 @@ def setup_device(user_id, user_email, app_id, device_id, device_name):
     create_topic(PROJECT_ID, in_topic_name)
     create_topic(PROJECT_ID, out_topic_name)
  
-    service_policy_member = "serviceAccount:%s" % service_account_handle
-    app_policy_member = "serviceAccount:%s" % app_account_handle
     set_pubsub_topic_policy(PROJECT_ID, in_topic_name, publisher_account=app_account_handle, subscriber_account=service_account_handle)
     set_pubsub_topic_policy(PROJECT_ID, out_topic_name, publisher_account=service_account_handle, subscriber_account=app_account_handle)
  
     create_subscription(PROJECT_ID, in_topic_name, in_sub)
     create_subscription(PROJECT_ID, out_topic_name, out_sub)
+    set_pubsub_subscription_policy(PROJECT_ID, in_sub, service_account_name)
+    set_pubsub_subscription_policy(PROJECT_ID, out_sub, app_account_name)
 
     # Store device info
     user_ref = db.collection(u'users')
@@ -353,36 +372,6 @@ def list_notes():
     devices = get_devices(claims['email'])
     return jsonify(devices)
 
-
-@app.route('/activate', methods=['POST', 'PUT'])
-def activate():
-    """
-    Activated the garage opener of a given device:
-
-        {
-            "device_id": "device identifier."
-        }
-    """
-
-    # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
-        return 'Unauthorized', 401
-
-    # [START gae_python_create_entity]
-    data = request.get_json()
-
-    user_email = claims['email']
-    device_id = data['device_id']
-    device = get_device(user_email, device_id)
-    if device is None:
-        return "Device not found", 404
-
-    perform_activation(user_email, device)
-
-    return 'OK', 200
 
 @app.route('/device', methods=['POST', 'PUT'])
 def create_device():
