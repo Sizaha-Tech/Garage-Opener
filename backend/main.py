@@ -203,10 +203,7 @@ def create_service_key(service_account_email):
     """Creates a key for a service account."""
     # pylint: disable=no-member
     key = service_api.projects().serviceAccounts().keys().create(
-        name='projects/-/serviceAccounts/' + service_account_email,
-        body={
-            'privateKeyType', 'TYPE_PKCS12_FILE'
-        }
+        name='projects/-/serviceAccounts/' + service_account_email,body={}
         ).execute()
     return key
 
@@ -250,7 +247,7 @@ def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_a
 
 def set_pubsub_subscription_policy(project, subscription_name, subscription_account):
     """Sets the IAM policy for a subscription."""
-    client = pubsub_v1.PublisherClient()
+    client = pubsub_v1.SubscriberClient()
     subscription_path = client.subscription_path(project, subscription_name)
     policy = client.get_iam_policy(subscription_path)
     # Add the service account policy for the topic.
@@ -313,8 +310,8 @@ def setup_device(user_id, user_email, app_id, device_id, device_name):
  
     create_subscription(PROJECT_ID, in_topic_name, in_sub)
     create_subscription(PROJECT_ID, out_topic_name, out_sub)
-    set_pubsub_subscription_policy(PROJECT_ID, in_sub, service_account_name)
-    set_pubsub_subscription_policy(PROJECT_ID, out_sub, app_account_name)
+    set_pubsub_subscription_policy(PROJECT_ID, in_sub, service_account_handle)
+    set_pubsub_subscription_policy(PROJECT_ID, out_sub, app_account_handle)
 
     # Store device info
     user_ref = db.collection(u'users')
