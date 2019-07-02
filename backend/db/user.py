@@ -1,4 +1,4 @@
-from device import Device
+from .device import Device 
 
 import datetime
 
@@ -47,11 +47,10 @@ class User(object):
         }
 
     def get_device(self, db, device_id):
-        device = Device.load(db, self.email, device_id)
-        device.parent = self
+        device = Device.load(self, db, device_id)
         return device
 
-    def get_all_devices(self, db):
+    def get_devices(self, db):
         """Fetches all devices associated with user_email.
 
         Devices are ordered them by date created, with most recent note added

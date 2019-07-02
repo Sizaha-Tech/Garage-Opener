@@ -238,7 +238,7 @@ def list_notes():
     return jsonify(reduce(lambda p, x: p+[x], (device.to_dict() for device in devices), []))
 
 @app.route('/shared_device/<device_id>/share', methods=['POST', 'PUT'])
-def create_device(device_id):
+def share_device(device_id):
     """
     Creates a record of a new shared device:
         {

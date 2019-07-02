@@ -1,9 +1,11 @@
 import datetime
+import random
+import string
 
 from firebase_admin import firestore
 from google.cloud import exceptions
 
-from user_event import UserEvent
+from .user_event import UserEvent
 
 class Device(object):
     ACTIVATE = 'activate'
@@ -25,14 +27,14 @@ class Device(object):
 
     def save(self, db):
         user_ref = db.collection(u'users')
-        user_doc_ref = user_ref.document(parent.user_email)
+        user_doc_ref = user_ref.document(self.parent.email)
         device_ref = user_doc_ref.collection(u'devices').document(self.device_id)
         device_ref.set(self.to_dict())
  
     @staticmethod
-    def load(db, user_email, device_id):
+    def load(user, db, device_id):
         user_ref = db.collection(u'users')
-        user_doc_ref = user_ref.document(parent.user_email)
+        user_doc_ref = user_ref.document(user.email)
         device_doc_ref = user_doc_ref.collection(u'devices').document(device_id)
         device_doc = None
         try:
@@ -43,7 +45,9 @@ class Device(object):
         if device_doc is None or not device_doc.exists:
             return None
 
-        return Device.from_dict(device_doc.to_dict())
+        device = Device.from_dict(device_doc.to_dict())
+        device.parent = user
+        return device
 
 
     @staticmethod
@@ -75,8 +79,6 @@ class Device(object):
         }
 
     def create_sharing_invitation(self, db, shared_user_email):
-        import random
-        import string
         def randomString(stringLength=10):
             """Generate a random string of fixed length """
             letters = string.ascii_lowercase
