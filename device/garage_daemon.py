@@ -1,8 +1,9 @@
-import time
 import json
 from google.cloud import pubsub_v1
+import time
+import os
 
-SETTING_FILE = "/garage_settings/settings.json"
+SETTING_FILE = os.environ.get('SERVICE_ACCOUNT_FILE')
 PROJECT_ID = "trusty-splice-230419"
 
 def receive_messages(project_id, subscription_name):

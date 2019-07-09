@@ -54,11 +54,11 @@ def server_error(e):
     return 'An internal error occurred.', 500
 
 if __name__ == '__main__':
-    for v in ['PORT']:
+    for v in ['BOOTSTRAP_PORT','WIFI_CONFIG_FILE','SERVICE_ACCOUNT_FILE']:
         if os.environ.get(v) is None:
             print("error: {} environment variable not set".format(v))
             exit(1)
 
     # start Flask server
     # Flask's debug mode is unrelated to ptvsd debugger used by Cloud Code
-    app.run(debug=False, port=int(os.environ.get('PORT')), host='0.0.0.0')
+    app.run(debug=False, port=int(os.environ.get('BOOTSTRAP_PORT')), host='0.0.0.0')
