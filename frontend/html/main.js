@@ -1,4 +1,4 @@
-// Copyright 2016, Google, Inc.
+// Copyright 2020, Sizaha LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -24,15 +24,17 @@ $(function(){
   // [START gae_python_firenotes_config]
   // Obtain the following from the "Add Firebase to your web app" dialogue
   // Initialize Firebase
-  var config = {
-    apiKey: "AIzaSyB21SaxtsKAJI49hknBwSSpLn0UEfBP3QE",
+  var firebaseConfig = {
+    apiKey: "AIzaSyAM50XFC-Qg6EmPayq28_uU9QVW4M8PLh8",
     authDomain: g_project_name+".firebaseapp.com",
     databaseURL: "https://" + g_project_name + ".firebaseio.com",
     projectId: g_project_name,
-    storageBucket: g_project_name + ".appspot.com",
-    messagingSenderId: "116023479029",
-    appId: "1:116023479029:web:afe09f547f324c44"
+    storageBucket: g_project_name+".appspot.com",
+    messagingSenderId: "217032520272",
+    appId: "1:217032520272:web:f843a0a671a37791e89755",
+    measurementId: "G-PRPEQHD10R"
   };
+
   // [END gae_python_firenotes_config]
 
   // This is passed into the backend to authenticate the user.
@@ -40,7 +42,8 @@ $(function(){
   // Firebase log-in
   function configureFirebaseLogin() {
 
-    firebase.initializeApp(config);
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
 
     // [START gae_python_state_change]
     firebase.auth().onAuthStateChanged(function(user) {

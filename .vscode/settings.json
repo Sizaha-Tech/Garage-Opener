@@ -4,5 +4,6 @@
     },
     "cloudcode.image-registry": {
         "name": "gcr.io/household-iot-277519"
-    }
+    },
+    "cloudcode.isDeployDeprecationMessageShown": true
 }
