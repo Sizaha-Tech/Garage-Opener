@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 var g_devices = null;
+var g_project_name = 'household-iot-277519';
 
 $(function(){
   // This is the host for the backend.
@@ -25,10 +26,10 @@ $(function(){
   // Initialize Firebase
   var config = {
     apiKey: "AIzaSyB21SaxtsKAJI49hknBwSSpLn0UEfBP3QE",
-    authDomain: "trusty-splice-230419.firebaseapp.com",
-    databaseURL: "https://trusty-splice-230419.firebaseio.com",
-    projectId: "trusty-splice-230419",
-    storageBucket: "trusty-splice-230419.appspot.com",
+    authDomain: g_project_name+".firebaseapp.com",
+    databaseURL: "https://" + g_project_name + ".firebaseio.com",
+    projectId: g_project_name,
+    storageBucket: g_project_name + ".appspot.com",
     messagingSenderId: "116023479029",
     appId: "1:116023479029:web:afe09f547f324c44"
   };

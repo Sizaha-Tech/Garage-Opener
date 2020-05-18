@@ -26,7 +26,7 @@ spec:
         env:
         # Replace with your Firebase project ID.
         - name: FIREBASE_PROJECT_ID
-          value: 'trusty-splice-230419'
+          value: 'household-iot-277519'
         - name: GAE_USE_SOCKETS_HTTPLIB
           value: 'true'
         - name: PORT

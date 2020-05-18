@@ -1,8 +1,8 @@
 {
     "cloudcode.profile-cluster-map": {
-        "[default]": "gke_trusty-splice-230419_us-west2_standard-cluster-2"
+        "[default]": "household-iot-277519_us-west2_standard-cluster-2"
     },
     "cloudcode.image-registry": {
-        "name": "gcr.io/trusty-splice-230419"
+        "name": "gcr.io/household-iot-277519"
     }
 }

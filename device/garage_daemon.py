@@ -4,7 +4,7 @@ import time
 import os
 
 SETTING_FILE = os.environ.get('SERVICE_ACCOUNT_FILE')
-PROJECT_ID = "trusty-splice-230419"
+PROJECT_ID = "household-iot-277519"
 
 def receive_messages(project_id, subscription_name):
     """Receives messages from a pull subscription."""

@@ -40,7 +40,7 @@ from db.user_event import UserEvent
 # URLFetch.
 # requests_toolbelt.adapters.appengine.monkeypatch()
 HTTP_REQUEST = google.auth.transport.requests.Request()
-PROJECT_ID = 'trusty-splice-230419'
+PROJECT_ID = 'household-iot-277519'
 PUBSUB_TIMEOUT = 60     # seconds
 
 # Device commands
@@ -192,6 +192,26 @@ def get_or_create_user(claims):
         user.save(db)
     return user
 
+
+def check_authorization(request):
+    # Verify Firebase auth.
+    if 'Authorization' in request.headers:
+        id_token = request.headers['Authorization'].split(' ').pop()
+        claims = google.oauth2.id_token.verify_firebase_token(
+            id_token, HTTP_REQUEST)
+        return claims
+
+    return None
+
+
+@app.route('/hello', methods=['GET'])
+def hello():
+    """Returns a list of notes added by the current Firebase user."""
+
+    return jsonify({
+            "hello": 'world!'
+        })
+
 @app.route('/device', methods=['POST', 'PUT'])
 def create_device():
     """
@@ -205,10 +225,8 @@ def create_device():
     """
 
     # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
+    claims = check_authorization(request)
+    if claims is None:
         return 'Unauthorized', 401
 
     user = get_or_create_user(claims)
@@ -222,20 +240,20 @@ def create_device():
     device = setup_new_device(user, data['app_id'], device_id,  data['device_name'])
     return jsonify(device.to_dict()), 200
 
+
 @app.route('/devices', methods=['GET'])
-def list_notes():
+def list_devices():
     """Returns a list of notes added by the current Firebase user."""
 
     # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
+    claims = check_authorization(request)
+    if claims is None:
         return 'Unauthorized', 401
 
     user = get_or_create_user(claims)
     devices = user.get_devices(db)
     return jsonify(reduce(lambda p, x: p+[x], (device.to_dict() for device in devices), []))
+
 
 @app.route('/shared_device/<device_id>/share', methods=['POST', 'PUT'])
 def share_device(device_id):
@@ -247,10 +265,8 @@ def share_device(device_id):
     """
 
     # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
+    claims = check_authorization(request)
+    if claims is None:
         return 'Unauthorized', 401
 
     user = get_or_create_user(claims)
@@ -273,10 +289,8 @@ def open_device(device_id):
     """
 
     # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
+    claims = check_authorization(request)
+    if claims is None:
         return 'Unauthorized', 401
 
     data = request.get_json()

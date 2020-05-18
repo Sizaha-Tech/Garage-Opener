@@ -7,8 +7,10 @@ build:
   artifacts:
   - image: python-garage-backend
     context: backend
-  - image: python-garage-frontend
-    context: frontend
+# New app-centric design does not require frontend (web) server... for now.
+#  - image: python-garage-frontend
+#    context: frontend
+
 # defines the Kubernetes manifests to deploy on each run
 deploy:
   kubectl:

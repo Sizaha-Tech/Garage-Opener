@@ -2,6 +2,17 @@
     "version": "0.2.0",
     "configurations": [
       {
+        "name": "Run on Kubernetes - cloudbuild",
+        "type": "cloudcode.kubernetes",
+        "request": "launch",
+        "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
+        "profile": "cloudbuild",
+        "watch": true,
+        "cleanUp": true,
+        "portForward": true,
+        "imageRegistry": "gcr.io/household-iot-277519"
+      },
+      {
         "type": "cloudcode",
         "request": "attach",
         "name": "Debug on Kubernetes (frontend)",
