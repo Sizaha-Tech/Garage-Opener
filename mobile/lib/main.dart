@@ -66,7 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
 
     final FirebaseUser user = (await _auth.signInWithCredential(credential)).user;
-    print("signed in " + user.displayName);
+    print("signed in as " + user.displayName);
     return user;
   }
 
