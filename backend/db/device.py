@@ -96,8 +96,12 @@ class Device(object):
             'created': datetime.datetime.now()
         })
 
-    def record_activation(self, db):
-        event = UserEvent(self.parent.email, self.device_id, UserEvent.ACTIVATE)
+    def record_creation(self, db):
+        event = UserEvent(self.parent.email, self.device_id, UserEvent.CREATE, '')
+        event.save(db)
+
+    def record_command(self, db, command_type):
+        event = UserEvent(self.parent.email, self.device_id, UserEvent.COMMAND, command_type)
         event.save(db)
 
     def __repr__(self):

@@ -21,9 +21,9 @@
         "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
         "profile": "cloudbuild",
         "watch": true,
-        "cleanUp": true,
+        "cleanUp": false,
         "portForward": true,
-        "imageRegistry": "gcr.io/household-iot-277519"
+        "imageRegistry": "gcr.io/household-iot-277519",
       },
       {
         "name": "Deploy on K8S - cloudbuild",

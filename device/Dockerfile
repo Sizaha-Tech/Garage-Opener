@@ -12,9 +12,9 @@ WORKDIR /garage_app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-
 COPY . .
 
-ENV GOOGLE_APPLICATION_CREDENTIALS=/app/config/service_credentials.json
+ENV GOOGLE_APPLICATION_CREDENTIALS=/garage_settings/service_account.json
+ENV SERVICE_ACCOUNT_FILE=/garage_settings/settings.json
 
 CMD [ "python", "./garage_daemon.py" ]

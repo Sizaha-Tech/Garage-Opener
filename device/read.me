@@ -1,0 +1,34 @@
+Building and Running Docker image on Raspberry Pi
+
+Needs to be done on Raspberry Pi. 
+
+1. Copy ./device files over to Pi.
+
+2. ssh into Pi and run the following command:
+
+    docker build --pull --rm -f "device/Dockerfile" -t garage_device:latest "device"
+
+3. Save the built image as:
+
+    docker save garage_device:latest | gzip > garage_device_latest.tar.gz
+
+4. Copy the container .tar.gz file to another Pi and import it with:
+
+    docker import ./garage_device_latest.tar.gz
+
+5. Run docker container locally with:
+
+    docker run -v /garage_settings:/garage_settings --env "SERVICE_ACCOUNT_FILE=/garage_settings/settings.json" --env "GOOGLE_APPLICATION_CREDENTIALS=/garage_settings/service_account.json" --device=/dev/gpiomem:/dev/gpiomem -i -a stdout garage_device:latest
+
+IMPORTANT: Content of /garage_settings/service.json is BASE64 decoded value of 'privateKeyData' from JSON blob stored as 'device_key' field in
+Firebase (stored within users/<user-email>/devices/<device_id> document).
+
+settings.json file has the following structure:
+
+{
+  "in_subscription": "<incoming-subscription-id>",
+  "out_subscription": "<outgoing-subscription-id>"
+}
+
+incoming-subscription-id and outgoing-subscription-id values correspond to in_sub and out_sub file values from
+Firebase (stored as properties of users/<user-email>/devices/<device_id> document).

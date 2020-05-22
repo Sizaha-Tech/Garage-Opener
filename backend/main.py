@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import logging
+import base58
 import datetime
+import hashlib
+import logging
+import os
 from functools import reduce
 from flask import Flask, json, jsonify, request
 import flask_cors
@@ -60,6 +62,11 @@ service_api = googleapiclient.discovery.build(
 cred = credentials.Certificate('accounts/backendServiceAccount.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
+def get_hash(str):
+    m = hashlib.sha256()
+    m.update(str.encode('utf-8'))
+    return base58.b58encode(m.digest()).decode('ascii')[0:25].lower()
 
 def create_service_account(project_id, service_name, display_name):
     """Creates a service account."""
@@ -137,12 +144,13 @@ def set_pubsub_subscription_policy(project, subscription_name, subscription_acco
     policy = client.set_iam_policy(subscription_path, policy)
 
 def setup_new_device(user, app_id, device_id, device_name):
-    in_topic_name = "g-in-topic-%s-%s" % (user.id, device_id)
-    out_topic_name = "g-out-topic-%s-%s" % (user.id, device_id)
-    service_account_name = "g-svc-%s" % device_id
-    app_account_name = "g-app-%s" % app_id
-    out_sub = "out-sub-%s" % device_id
-    in_sub = "in-sub-%s" % device_id
+    device_hash = get_hash(user.id + device_id)
+    in_topic_name = "ti-%s" % device_hash
+    out_topic_name = "to-%s" % device_hash
+    service_account_name = "ds-%s" % device_hash
+    app_account_name = "app-%s" % device_hash
+    out_sub = "os-%s" % device_hash
+    in_sub = "is-%s" % device_hash
     # Create service account, topic and in/out subscriptions
     service_account = create_service_account(PROJECT_ID, service_account_name, "Garage Opener %s" % device_id)
     app_account = create_service_account(PROJECT_ID, app_account_name, "Garage App %s" % user.email)
@@ -167,6 +175,8 @@ def setup_new_device(user, app_id, device_id, device_name):
         out_topic_name, in_topic_name, out_sub, in_sub,
         json.dumps(service_key), json.dumps(app_key), app_id)
     device.save(db)
+
+    device.record_creation(db)
     return device
 
 def send_open_command_to_device(device):
@@ -178,6 +188,7 @@ def send_open_command_to_device(device):
     future = publisher.publish(topic_path, data = data)
     # future.result(PUBSUB_TIMEOUT)
     future.result(PUBSUB_TIMEOUT)
+    device.record_command(db, COMMAND_OPEN)
     
 def get_or_create_user(claims):
     user_email = claims.get('email')
@@ -305,7 +316,6 @@ def open_device(device_id):
         return "Device does not exists", 404
 
     send_open_command_to_device(device)
-    device.record_activation(db)
     return jsonify(device.to_dict()), 200
 
 
