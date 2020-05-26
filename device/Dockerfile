@@ -1,8 +1,4 @@
-# $ docker run -d \
-#  -it \
-#  --name garage \
-#  -v "/garage/config:/app/config \
-#
+# See read.me file for build and run instructions.
 #
 
 FROM arm32v7/python:3
@@ -16,5 +12,8 @@ COPY . .
 
 ENV GOOGLE_APPLICATION_CREDENTIALS=/garage_settings/service_account.json
 ENV SERVICE_ACCOUNT_FILE=/garage_settings/settings.json
+ENV BOOTSTRAP_PORT=8080
 
-CMD [ "python", "./garage_daemon.py" ]
+CMD ["/bin/bash", "./start_device.sh"]
+
+# CMD [ "python", "./garage_daemon.py" ]

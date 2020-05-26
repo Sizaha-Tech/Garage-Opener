@@ -3,10 +3,9 @@ from google.cloud import pubsub_v1
 import time
 import os
 import RPi.GPIO as GPIO
-import time
 
 
-SETTING_FILE = os.environ.get('SERVICE_ACCOUNT_FILE')
+SETTINGS_FILE = os.environ.get('SETTINGS_FILE')
 PROJECT_ID = "household-iot-277519"
 
 def open_garage():
@@ -42,6 +41,6 @@ if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(23,GPIO.OUT)
 
-    fp = open(SETTING_FILE)
+    fp = open(SETTINGS_FILE)
     settings = json.load(fp)
     receive_messages(PROJECT_ID, settings['in_subscription'])

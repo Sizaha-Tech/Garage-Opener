@@ -18,7 +18,19 @@ Needs to be done on Raspberry Pi.
 
 5. Run docker container locally with:
 
-    docker run -v /garage_settings:/garage_settings --env "SERVICE_ACCOUNT_FILE=/garage_settings/settings.json" --env "GOOGLE_APPLICATION_CREDENTIALS=/garage_settings/service_account.json" --device=/dev/gpiomem:/dev/gpiomem -i -a stdout garage_device:latest
+    docker run -v /garage_settings:/garage_settings \
+       --env "SETTINGS_FILE=/garage_settings/settings.json" \
+       --env "GOOGLE_APPLICATION_CREDENTIALS=/garage_settings/service_account.json" \
+       --device=/dev/gpiomem:/dev/gpiomem \
+       -it garage_device:latest
+
+before device is bootstrapped, run with this command instead
+
+    docker run -v /garage_settings:/garage_settings \
+       --env "SETTINGS_FILE=/garage_settings/settings.json" \
+       --env "GOOGLE_APPLICATION_CREDENTIALS=/garage_settings/service_account.json" \
+       --privileged \
+       -it garage_device:latest
 
 IMPORTANT: Content of /garage_settings/service.json is BASE64 decoded value of 'privateKeyData' from JSON blob stored as 'device_key' field in
 Firebase (stored within users/<user-email>/devices/<device_id> document).
@@ -32,3 +44,9 @@ settings.json file has the following structure:
 
 incoming-subscription-id and outgoing-subscription-id values correspond to in_sub and out_sub file values from
 Firebase (stored as properties of users/<user-email>/devices/<device_id> document).
+
+
+
+6. Install network manager
+
+    sudo apt-get install network-manager -y
