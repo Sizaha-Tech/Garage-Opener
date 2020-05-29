@@ -57,10 +57,10 @@ class WifiFinder:
                 try:
                     (connect_result, info) = self.connect(name)
                     if connect_result == CONNECTION_SUCCESS:
-                        print("Successfully connected to SSID - {}".format(name))
+                        print("Successfully connected to SSID='{}', connection_id='{}'".format(name, info))
                         return True
                     elif connect_result == CONNECTION_NO_SSID and attempt <= 10:
-                        # If it can't find SSID somehow, wait 1
+                        # If it can't find SSID somehow, wait 8 seconds
                         attempt = attempt + 1
                         time.sleep(8)
                         continue
@@ -87,17 +87,17 @@ class WifiFinder:
             for result_line in results:
                 match = success_regex.match(result_line)
                 if match is not None:
-                    connection_guid = match[2]
+                    connection_guid = match.group(2)
                     return (CONNECTION_SUCCESS, connection_guid)
 
                 match = bad_password_regex.match(result_line)
                 if match is not None:
-                    error_code = match[1]
+                    error_code = match.group(1)
                     return (CONNECTION_BAD_PASSWORD, error_code)
 
                 match = no_ssid_regex.match(result_line)
                 if match is not None:
-                    ssid_name = match[1]
+                    ssid_name = match.group(1)
                     return (CONNECTION_NO_SSID, ssid_name)
         except:
             raise
@@ -110,7 +110,7 @@ def start_wifi():
     fp = open(SETTINGS_FILE)
     settings = json.load(fp)
     f = WifiFinder(ssid = settings['ssid'],
-                   password = settings['password'])
+                   password = settings['psk'])
     return f.find_wifi()
 
 # Checks if we can access Google servers.

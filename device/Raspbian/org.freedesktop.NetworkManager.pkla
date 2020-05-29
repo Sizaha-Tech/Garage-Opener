@@ -1,0 +1,6 @@
+[Allow pi user control over NetworkManager]
+Identity=unix-user:pi
+Action=org.freedesktop.NetworkManager.*
+ResultAny=yes
+ResultInactive=no
+ResultActive=yes

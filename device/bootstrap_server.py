@@ -1,10 +1,12 @@
-import fcntl
-import socket
-import struct
 import base64
-
+import fcntl
 from flask import Flask, json, jsonify, request
 import flask_cors
+import os
+import socket
+import struct
+
+app = Flask(__name__)
 
 def getHwAddr(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -14,14 +16,14 @@ def getHwAddr(ifname):
 def setup_ap():
     return
 
-@app.route('/hello', methods=['GET])
-def hello(device_id):
+@app.route('/hello', methods=['GET'])
+def hello():
     # TODO: Return MAC address
     mac = getHwAddr('wlan0')
     return jsonify({'device': mac}), 200
 
 @app.route('/setup_device', methods=['POST', 'PUT'])
-def setup_device(device_id):
+def setup_device():
     """
     Sets up garage :
         {
@@ -45,16 +47,26 @@ def setup_device(device_id):
         'ssid': ssid,
         'psk': psk
     }
-    settings_file_name = os.environ.get('SETTINGS_FILE')
+    settings_file_name = "%s.tmp" % os.environ.get('SETTINGS_FILE')
     with open(settings_file_name, 'w', encoding='utf-8') as f:
         json.dump(device_config, f, ensure_ascii=False, indent=4)
     
     service_file_name = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
     with open(service_file_name, 'w', encoding='utf-8') as f:
-        f.write(base64.b64decode(service_key_blob))
+        f.write(base64.b64decode(service_key_blob).decode('utf-8'))
 
-    exit(0)
     return "OK", 200
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    shutdown_server()
+    return 'Server shutting down...', 200
+
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
 
 @app.errorhandler(500)
 def server_error(e):
