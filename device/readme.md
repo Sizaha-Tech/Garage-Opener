@@ -1,15 +1,15 @@
-Setting up Wireless AP
+#Setting up Wireless AP
 
-1. Install missing OS packages:
+##1. Install missing OS packages:
 
-    # Armbian setup (Orange Pi):
+    ### Armbian setup (Orange Pi):
     sudo apt update && sudo apt --yes --force-yes install dnsmasq
-    # sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd
+    ### sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd
 
     sudo apt --yes --force-yes install python3-dev python3-pip python3-venv
     sudo pip3 install setuptools distlib virtualenv
 
-    # Raspian setup (Raspberry Pi)
+    ### Raspian setup (Raspberry Pi)
     1.1. Install NetworkManager:
        sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd \
             network-manager openvpn-systemd-resolved rng-tools
@@ -20,10 +20,10 @@ Setting up Wireless AP
     1.3. Reboot
        sudo reboot
 
-2. Install Python packages:
+##2. Install Python packages:
     pip3 install wireless netifaces psutil pyaccesspoint packaging
 
-3. Start AP:
+##3. Start AP:
    sudo pyaccesspoint -w wlan0 --ssid "Sizaha1234" --password "sizaha2020" start
 
 
