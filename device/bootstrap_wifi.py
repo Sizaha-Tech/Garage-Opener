@@ -9,6 +9,7 @@ import random
 import sys
 import socket
 from wireless import Wireless
+import time
 
 
 from builtins import input
@@ -141,6 +142,9 @@ class AccessPoint:
 
     def _pre_start(self):
         try:
+            self._execute_shell('systemctl disable systemd-resolved')
+            self._execute_shell('systemctl mask systemd-resolved')
+
             self._execute_shell('killall wpa_supplicant')
 
             result = self._execute_shell('nmcli radio wifi off')
@@ -188,10 +192,9 @@ class AccessPoint:
         # allow traffic to/from wlan
         self._execute_shell('iptables -A OUTPUT --out-interface {} -j ACCEPT'.format(self.wlan))
         self._execute_shell('iptables -A INPUT --in-interface {} -j ACCEPT'.format(self.wlan))
-        # self._execute_shell('iptables -I INPUT 1 -i {} -p tcp --dport 8080 -j ACCEPT'.format(self.wlan))
 
         # start dnsmasq
-        s = 'dnsmasq --dhcp-authoritative --interface={} --dhcp-range={}.20,{}.100,{},4h'\
+        s = 'dnsmasq --dhcp-authoritative --interface={} --dhcp-range={}.20,{}.100,{},12h'\
             .format(self.wlan, ipparts, ipparts, self.netmask)
 
         logging.debug('running dnsmasq')
@@ -251,6 +254,9 @@ class AccessPoint:
         logging.debug('disabling forward in sysctl.')
         r = self._execute_shell('sysctl -w net.ipv4.ip_forward=0')
         logging.debug(r.strip())
+
+        self._execute_shell('systemctl unmask systemd-resolved')
+        self._execute_shell('systemctl enable systemd-resolved')
         # self.execute_shell('ifconfig ' + wlan + ' down'  + IP + ' netmask ' + Netmask)
         # self.execute_shell('ip addr flush ' + wlan)
         logging.debug('hotspot has stopped.')
