@@ -1,5 +1,13 @@
 #Setting up Wireless AP
 
+##0. Configure Raspbian OS
+    0.1. Brun the image
+    0.2. Mount the image on PC/Mac. Add 'ssh' file to boot partition.
+    0.3. Reboot Pi, log in with ssh.
+    0.4. Change pi password with
+        passwd
+    0.5. 
+
 ##1. Install missing OS packages:
 
     ### Armbian setup (Orange Pi):
@@ -12,7 +20,9 @@
     ### Raspian setup (Raspberry Pi)
     1.1. Install NetworkManager:
        sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd \
-            network-manager openvpn-systemd-resolved rng-tools
+            network-manager openvpn-systemd-resolved rng-tools lsof
+
+        sudo apt purge openresolv dhcpcd5
 
     1.2. Fix permissions for 'pi' account:
        cp ./Raspian/org.freedesktop.NetworkManager.pkla /var/lib/polkit-1/localauthority/50-local.d/
@@ -20,14 +30,27 @@
     1.3. Reboot
        sudo reboot
 
-##2. Install Python packages:
-    pip3 install wireless netifaces psutil pyaccesspoint packaging
+    ### Install Python goodies:
+    
+    2.1. Get the latest pip:
+        sudo apt --yes --force-yes install python3-distutils python3-venv
 
-##3. Start AP:
-   sudo pyaccesspoint -w wlan0 --ssid "Sizaha1234" --password "sizaha2020" start
+        apt-get remove python-pip python3-pip
+        wget https://bootstrap.pypa.io/get-pip.py
+        python3 get-pip.py
+    
+    2.2. Create virtual env
+
+        sudo -s
+        mkdir -p /app/garage
+        cd /app/garage
+        python3 -m venv env
+        source env/bin/activate
+
+        pip3 install -r device/requirements.txt
 
 
-Building and Running Docker image on Raspberry Pi
+##Building and Running Docker image on Raspberry Pi
 
 Needs to be done on Raspberry Pi. 
 

@@ -10,7 +10,6 @@ requests==2.23.0
 requests-toolbelt==0.9.1
 RPi.GPIO
 werkzeug==1.0.1
-
 wireless
 netifaces
 psutil

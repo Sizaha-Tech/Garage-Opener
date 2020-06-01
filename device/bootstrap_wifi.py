@@ -142,18 +142,32 @@ class AccessPoint:
 
     def _pre_start(self):
         try:
+            self._execute_shell('systemctl stop systemd-resolved')
             self._execute_shell('systemctl disable systemd-resolved')
             self._execute_shell('systemctl mask systemd-resolved')
-
             self._execute_shell('killall wpa_supplicant')
 
             result = self._execute_shell('nmcli radio wifi off')
             if "error" in result.lower():
                 self._execute_shell('nmcli nm wifi off')
             self._execute_shell('rfkill unblock wlan')
-            self._execute_shell('sleep 1')
+            time.sleep(5)
         except:
             pass
+
+    def _check_process(self, process_name):
+        '''
+        Check if there is any running process that contains the given name processName.
+        '''
+        #Iterate over the all the running process
+        for proc in psutil.process_iter():
+            try:
+                # Check if process name contains the given name string.
+                if process_name.lower() in proc.name().lower():
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        return False
 
     def _start_router(self):
         self._pre_start()
@@ -196,7 +210,6 @@ class AccessPoint:
         # start dnsmasq
         s = 'dnsmasq --dhcp-authoritative --interface={} --dhcp-range={}.20,{}.100,{},12h'\
             .format(self.wlan, ipparts, ipparts, self.netmask)
-
         logging.debug('running dnsmasq')
         logging.debug(s)
         r = self._execute_shell(s)
@@ -257,6 +270,8 @@ class AccessPoint:
 
         self._execute_shell('systemctl unmask systemd-resolved')
         self._execute_shell('systemctl enable systemd-resolved')
+        self._execute_shell('systemctl start systemd-resolved')
+
         # self.execute_shell('ifconfig ' + wlan + ' down'  + IP + ' netmask ' + Netmask)
         # self.execute_shell('ip addr flush ' + wlan)
         logging.debug('hotspot has stopped.')
