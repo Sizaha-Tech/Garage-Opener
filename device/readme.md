@@ -24,7 +24,7 @@
 
         sudo apt purge openresolv dhcpcd5
 
-    1.2. Fix permissions for 'pi' account:
+    1.2. Fix permissions for 'pi' account (not needed for root)
        cp ./Raspian/org.freedesktop.NetworkManager.pkla /var/lib/polkit-1/localauthority/50-local.d/
 
     1.3. Reboot
@@ -100,7 +100,14 @@ incoming-subscription-id and outgoing-subscription-id values correspond to in_su
 Firebase (stored as properties of users/<user-email>/devices/<device_id> document).
 
 
+6. Setup boot script
+    cp <project>/etc/init.d/sizaha_garage <device>/etc/init.d
+    chmod 755 /etc/init.d/sizaha_garage
 
-6. Install network manager
+Once that is done create a symbolic link in the run level directory you would like to use. We need runlevel 3 (multiple user mode under the command line interface and not under the graphical user interface., so the script shoud be places it in the /etc/rc3.d directory. You just cannot place it the directory, you must signify when it will run by indicating the startup with an “S” and the execution order is important. Place it after everything else that is in the directory by giving it a higher number. If the last script to be run is rc.local and it is named S99rc.local then you need to add your script as S99sizaha_garage.
 
-    sudo apt-get install network-manager -y
+   sudo ln -s /etc/init.d/sizaha_garage /etc/rc3.d/S99sizaha_garage
+
+Each backward compatible /etc/rc*.d directory has symbolic links to the /etc/init.d/ directory.
+
+

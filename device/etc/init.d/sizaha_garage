@@ -1,0 +1,6 @@
+#!/bin/sh -e
+
+# Boot script
+
+cd /app/garage/device
+./start_device.sh
