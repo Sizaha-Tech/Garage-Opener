@@ -1,6 +1,6 @@
 # mobile
 
-A new Flutter project.
+A new Flutter skeleton project.
 
 ## Getting Started
 
