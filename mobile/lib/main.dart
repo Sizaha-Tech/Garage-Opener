@@ -1,140 +1,380 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-void main() {
-  runApp(MyApp());
+final FirebaseAuth _auth = FirebaseAuth.instance;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(ControllerApp());
 }
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+/// The entry point of the application.
+///
+/// Returns a [MaterialApp].
+class ControllerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+        title: 'Sizaha Garage Controller',
+        theme: ThemeData.dark(),
+        home: SigninSplash());
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class SigninSplash extends StatefulWidget {
+  final String title = 'Sizaha Controller';
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _SigninSplashState createState() => _SigninSplashState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class _SigninSplashState extends State<SigninSplash> {
 
-  Future<FirebaseUser> _handleSignIn() async {
-    final GoogleSignInAccount googleUser = await _googleSignIn.signIn();
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+  int signinState = 0;
+  String accessToken;
+  String idToken;
+  User user;
 
-    final AuthCredential credential = GoogleAuthProvider.getCredential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+  final TextEditingController _tokenController = TextEditingController();
+  final TextEditingController _tokenSecretController = TextEditingController();
 
-    final FirebaseUser user = (await _auth.signInWithCredential(credential)).user;
-    print("signed in as " + user.displayName);
-    return user;
+  int _selection = 0;
+  bool _showAuthSecretTextField = false;
+  bool _showProviderTokenField = false;
+  String _provider = 'Google';
+
+  _fetchPrefs() async {
+    try {
+      user = _auth.currentUser;
+      if (user == null) {
+        setState(() {
+          signinState = 2; // show sign in screen
+        });
+      } else {
+        setState(() {
+          signinState = 1; // got the prefs; set to some value if needed
+        });
+      }
+    } catch (e) {
+      setState(() {
+        signinState = 2; //got the prefs; set to some value if needed
+      });
+    }
   }
 
-  void _incrementCounter() {
-    _handleSignIn()
-        .then((FirebaseUser user) => print(user))
-        .catchError((e) => print(e));
-    /*
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-*/
+  @override
+  void initState() {
+    super.initState();
+    _fetchPrefs(); //running initialisation code; getting prefs etc.
+  }
+  
+  // Example code for sign out.
+  void _signOut() async {
+    await GoogleSignIn().disconnect();
+    await _auth.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: <Widget>[
+          Builder(builder: (BuildContext context) {
+            return FlatButton(
+              child: const Text('Sign out'),
+              textColor: Theme.of(context).buttonColor,
+              onPressed: () async {
+                if (signinState != 1)
+                  return;
+
+                final User user = _auth.currentUser;
+                if (user == null) {
+                  Scaffold.of(context).showSnackBar(const SnackBar(
+                    content: Text('No one has signed in.'),
+                  ));
+                } else {
+                  _signOut();
+                  final String name = user.displayName;
+                  Scaffold.of(context).showSnackBar(SnackBar(
+                    content: Text(name + ' has successfully signed out.'),
+                  ));
+                  setState(() {
+                    signinState = 2; // show sign in screen
+                  });
+                }
+              },
+            );
+          })
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      body:
+        signinState == 2 ? 
+          createSigninScreen() :
+          (signinState == 1 ? 
+            createStartSessionScreen() : 
+            createProgressScreen()
+          )
+      ,
     );
   }
+
+  Widget createSigninScreen() {
+    return Card(
+      child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                child: const Text('Select Authentication Provider',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                alignment: Alignment.center,
+              ),
+              Container(
+                padding: EdgeInsets.only(top: 16),
+                child: kIsWeb
+                    ? Text(
+                        'When using Flutter Web, API keys are configured through the Firebase Console. The below providers demonstrate how this works')
+                    : Text(
+                        'We do not provide an API to obtain the token for below providers apart from Google '
+                        'Please use a third party service to obtain token for other providers.'),
+                alignment: Alignment.center,
+              ),
+              Container(
+                padding: const EdgeInsets.only(top: 16.0),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Visibility(
+                      visible: !kIsWeb,
+                      child: ListTile(
+                        title: Text('Google'),
+                        leading: Radio<int>(
+                          value: 0,
+                          groupValue: _selection,
+                          onChanged: _handleRadioButtonSelected,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: Text('Twitter'),
+                      leading: Radio<int>(
+                        value: 1,
+                        groupValue: _selection,
+                        onChanged: _handleRadioButtonSelected,
+                      ),
+                    ),
+                    ListTile(
+                      title: Text('Facebook'),
+                      leading: Radio<int>(
+                        value: 2,
+                        groupValue: _selection,
+                        onChanged: _handleRadioButtonSelected,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Visibility(
+                visible: _showProviderTokenField && !kIsWeb,
+                child: TextField(
+                  controller: _tokenController,
+                  decoration: const InputDecoration(
+                      labelText: 'Enter provider\'s token'),
+                ),
+              ),
+              Visibility(
+                visible: _showAuthSecretTextField && !kIsWeb,
+                child: TextField(
+                  controller: _tokenSecretController,
+                  decoration: const InputDecoration(
+                      labelText: 'Enter provider\'s authTokenSecret'),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.only(top: 16.0),
+                alignment: Alignment.center,
+                child: SignInButton(
+                  _provider == "Facebook"
+                      ? Buttons.Facebook
+                      : (_provider == "Twitter"
+                          ? Buttons.Twitter
+                          : Buttons.GoogleDark),
+                  text: "Sign In",
+                  onPressed: () async {
+                    _signInWithOtherProvider();
+                  },
+                ),
+              ),
+            ],
+          )),
+    );
+  }
+
+  void _handleRadioButtonSelected(int value) {
+    setState(() {
+      _selection = value;
+
+      switch (_selection) {
+        case 1:
+          {
+            _provider = "Twitter";
+            _showAuthSecretTextField = true;
+            _showProviderTokenField = true;
+          }
+          break;
+
+        case 2:
+          {
+            _provider = "Facebook";
+            _showAuthSecretTextField = false;
+            _showProviderTokenField = true;
+          }
+          break;
+
+        default:
+          {
+            _provider = "Google";
+            _showAuthSecretTextField = false;
+            _showProviderTokenField = false;
+          }
+      }
+    });
+  }
+
+  void _signInWithOtherProvider() {
+    switch (_selection) {
+      case 1:
+        _signInWithTwitter();
+        break;
+      case 2:
+        _signInWithFacebook();
+        break;
+      default:
+        _signInWithGoogle();
+    }
+  }
+
+  void _signInWithFacebook() async {
+    try {
+      final AuthCredential credential = FacebookAuthProvider.credential(
+        _tokenController.text,
+      );
+      final User user = (await _auth.signInWithCredential(credential)).user;
+
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text("Sign In ${user.uid} with Facebook"),
+      ));
+    } catch (e) {
+      print(e);
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text("Failed to sign in with Facebook: ${e}"),
+      ));
+    }
+  }
+
+  // Example code of how to sign in with Twitter.
+  void _signInWithTwitter() async {
+    try {
+      UserCredential userCredential;
+
+      if (kIsWeb) {
+        TwitterAuthProvider twitterProvider = TwitterAuthProvider();
+        await _auth.signInWithPopup(twitterProvider);
+      } else {
+        final AuthCredential credential = TwitterAuthProvider.credential(
+            accessToken: _tokenController.text,
+            secret: _tokenSecretController.text);
+        userCredential = await _auth.signInWithCredential(credential);
+      }
+
+      final user = userCredential.user;
+
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text("Signed in ${user.uid} with Twitter"),
+      ));
+    } catch (e) {
+      print(e);
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text("Failed to sign in with Twitter: ${e}"),
+      ));
+    }
+  }
+
+  //Example code of how to sign in with Google.
+  void _signInWithGoogle() async {
+    try {
+      UserCredential userCredential;
+
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignInAccount googleUser = await GoogleSignIn().signIn();
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+        final GoogleAuthCredential googleAuthCredential =
+            GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        userCredential = await _auth.signInWithCredential(googleAuthCredential);
+      }
+
+      final newUser = userCredential.user;
+      setState(() {
+        signinState = 1;
+        user = newUser;
+      });
+    } catch (e) {
+      print(e);
+      setState(() {
+        signinState = 2;
+      });
+    }
+  }
+
+
+
+  Widget createProgressScreen() {
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            child: const Text('Signing in...'),
+            padding: const EdgeInsets.all(16),
+            alignment: Alignment.center,
+          ),
+          Container(
+            child: CircularProgressIndicator(),
+            padding: const EdgeInsets.all(16),
+            alignment: Alignment.center,
+          ),        ],
+      );
+  }
+
+  Widget createStartSessionScreen() {
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            child: Text('Welcome back ${user.displayName}!'),
+            padding: const EdgeInsets.all(16),
+            alignment: Alignment.center,
+          ),
+        ],
+      );
+  }
+
+
+
 }
+
+
