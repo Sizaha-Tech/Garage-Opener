@@ -1,9 +1,14 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http show get;
+
+import 'models/deviceModel.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -34,11 +39,37 @@ class SigninSplash extends StatefulWidget {
 }
 
 class _SigninSplashState extends State<SigninSplash> {
-
+  final String sizahaFrontendUrl = 'http://dev_api.sizaha.com:8080/';
   int signinState = 0;
   String accessToken;
   String idToken;
   User user;
+
+  List<DeviceModel> devices = [];
+
+  void getDevices(String accessToken) async {
+    try {
+      final response = await http.get('$sizahaFrontendUrl/devices',
+          headers: {'Authorization': 'Bearer ' + accessToken});
+      if (response.statusCode != 200) {
+        print('API call HTTP error = ${response.statusCode}');
+        return;
+      }
+
+      List<dynamic> results = json.decode(response.body);
+      List<DeviceModel> userDevices = [];
+      for (dynamic res in results) {
+        final deviceModel = new DeviceModel.fromJson(res);
+        userDevices.add(deviceModel);
+      }
+      setState(() {
+        devices.clear();
+        devices.addAll(userDevices);
+      });
+    } catch (e) {
+      print('API call failed - $e');
+    }
+  }
 
   final TextEditingController _tokenController = TextEditingController();
   final TextEditingController _tokenSecretController = TextEditingController();
@@ -56,9 +87,12 @@ class _SigninSplashState extends State<SigninSplash> {
           signinState = 2; // show sign in screen
         });
       } else {
+        var token = await user.getIdToken();
         setState(() {
+          accessToken = token;
           signinState = 1; // got the prefs; set to some value if needed
         });
+        getDevices(accessToken);
       }
     } catch (e) {
       setState(() {
@@ -72,7 +106,7 @@ class _SigninSplashState extends State<SigninSplash> {
     super.initState();
     _fetchPrefs(); //running initialisation code; getting prefs etc.
   }
-  
+
   // Example code for sign out.
   void _signOut() async {
     await GoogleSignIn().disconnect();
@@ -90,8 +124,7 @@ class _SigninSplashState extends State<SigninSplash> {
               child: const Text('Sign out'),
               textColor: Theme.of(context).buttonColor,
               onPressed: () async {
-                if (signinState != 1)
-                  return;
+                if (signinState != 1) return;
 
                 final User user = _auth.currentUser;
                 if (user == null) {
@@ -113,14 +146,11 @@ class _SigninSplashState extends State<SigninSplash> {
           })
         ],
       ),
-      body:
-        signinState == 2 ? 
-          createSigninScreen() :
-          (signinState == 1 ? 
-            createStartSessionScreen() : 
-            createProgressScreen()
-          )
-      ,
+      body: signinState == 2
+          ? createSigninScreen()
+          : (signinState == 1
+              ? createStartSessionScreen()
+              : createProgressScreen()),
     );
   }
 
@@ -275,7 +305,7 @@ class _SigninSplashState extends State<SigninSplash> {
     } catch (e) {
       print(e);
       Scaffold.of(context).showSnackBar(SnackBar(
-        content: Text("Failed to sign in with Facebook: ${e}"),
+        content: Text("Failed to sign in with Facebook: $e"),
       ));
     }
   }
@@ -303,7 +333,7 @@ class _SigninSplashState extends State<SigninSplash> {
     } catch (e) {
       print(e);
       Scaffold.of(context).showSnackBar(SnackBar(
-        content: Text("Failed to sign in with Twitter: ${e}"),
+        content: Text("Failed to sign in with Twitter: $e"),
       ));
     }
   }
@@ -341,40 +371,34 @@ class _SigninSplashState extends State<SigninSplash> {
     }
   }
 
-
-
   Widget createProgressScreen() {
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            child: const Text('Signing in...'),
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.center,
-          ),
-          Container(
-            child: CircularProgressIndicator(),
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.center,
-          ),        ],
-      );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          child: const Text('Signing in...'),
+          padding: const EdgeInsets.all(16),
+          alignment: Alignment.center,
+        ),
+        Container(
+          child: CircularProgressIndicator(),
+          padding: const EdgeInsets.all(16),
+          alignment: Alignment.center,
+        ),
+      ],
+    );
   }
 
   Widget createStartSessionScreen() {
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            child: Text('Welcome back ${user.displayName}!'),
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.center,
-          ),
-        ],
-      );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          child: Text('Welcome back ${user.displayName}!'),
+          padding: const EdgeInsets.all(16),
+          alignment: Alignment.center,
+        ),
+      ],
+    );
   }
-
-
-
 }
-
-

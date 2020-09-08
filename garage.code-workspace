@@ -13,6 +13,7 @@
 		},
 		"cloudcode.profile-registry-map": {
 			"[default]": "gcr.io/household-iot-277519"
-		}
+		},
+		"python.pythonPath": "/usr/local/bin/python3"
 	}
 }
