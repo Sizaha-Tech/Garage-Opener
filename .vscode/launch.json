@@ -21,7 +21,7 @@
         "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
         "profile": "cloudbuild",
         "watch": true,
-        "cleanUp": false,
+        "cleanUp": true,
         "portForward": true,
         "imageRegistry": "gcr.io/household-iot-277519",
       },
@@ -32,7 +32,7 @@
         "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
         "profile": "cloudbuild",
         "watch": false,
-        "cleanUp": false,
+        "cleanUp": true,
         "portForward": false,
         "imageRegistry": "gcr.io/household-iot-277519"
       }

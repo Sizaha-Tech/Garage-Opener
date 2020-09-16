@@ -11,5 +11,9 @@ spec:
     app: python-garage
     tier: backend
   ports:
-  - port: 8080
-    targetPort: http-server
+    - name: http
+      port: 80
+      targetPort: http-server
+    - name: https
+      port: 443
+      targetPort: http-server
