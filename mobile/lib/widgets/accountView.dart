@@ -26,7 +26,7 @@ class AccountView extends StatelessWidget {
         ),
         Container(
             alignment: Alignment.bottomCenter,
-            child: FlatButton(
+            child: OutlineButton(
               child: const Text('Sign out'),
               textColor: Theme.of(context).buttonColor,
               onPressed: () {

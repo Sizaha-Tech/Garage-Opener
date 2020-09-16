@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/models/appModel.dart';
+import 'package:mobile/models/deviceModel.dart';
 import 'package:provider/provider.dart';
 
 class DeviceListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Column(
+    return Scaffold(
+      body: Column(
         children: [
           Expanded(
             child: Padding(
@@ -30,54 +31,64 @@ class _DeviceList extends StatelessWidget {
     // to rebuild this widget when CartModel notifies listeners (in other words,
     // when it changes).
     var model = context.watch<AppModel>();
-
-    return ListView.builder(
-        itemCount: model.devices.length,
-        itemBuilder: (context, index) => Card(
-              child: ListTile(
-                leading: Icon(Icons.sentiment_very_satisfied),
-                title: Text(
-                  model.devices[index].deviceId,
-                  style: itemNameStyle,
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        verticalDirection: VerticalDirection.down,
+        children: <Widget>[
+          Expanded(child: dataBody(model.devices)),
+          Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsets.all(5.0),
+                  child: OutlineButton(
+                    child: Text('Unregister'),
+                    onPressed: () {},
+                  ),
                 ),
-              ),
-            ));
+              ])
+        ]);
   }
-}
 
-class _DevicesFinal extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    var hugeStyle =
-        Theme.of(context).textTheme.headline1.copyWith(fontSize: 48);
-
-    return SizedBox(
-      height: 200,
-      child: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Another way to listen to a model's change is to include
-            // the Consumer widget. This widget will automatically listen
-            // to CartModel and rerun its builder on every change.
-            //
-            // The important thing is that it will not rebuild
-            // the rest of the widgets in this build method.
-            Consumer<AppModel>(
-                builder: (context, model, child) => Text(
-                    '${model.devices.length} deviced registered',
-                    style: hugeStyle)),
-            SizedBox(width: 24),
-            FlatButton(
-              onPressed: () {
-                Scaffold.of(context)
-                    .showSnackBar(SnackBar(content: Text('Coming soon...')));
-              },
-              color: Colors.white,
-              child: Text('Register New Device'),
-            ),
-          ],
-        ),
+  SingleChildScrollView dataBody(List<DeviceModel> devices) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: DataTable(
+        columns: [
+          DataColumn(
+            label: Text("Action"),
+            numeric: false,
+          ),
+          DataColumn(
+            label: Text("Devices"),
+            numeric: false,
+          ),
+        ],
+        rows: devices
+            .map(
+              (device) => DataRow(cells: [
+                DataCell(
+                  Text(device.deviceId),
+                  onTap: () {
+                    print('Selected ${device.deviceId}');
+                  },
+                ),
+                DataCell(
+                  FlatButton(
+                    child: const Text('Activate'),
+                    textColor: Colors.white,
+                    color: Colors.red[300],
+                    onPressed: () {
+                      print("Pressed device ${device.deviceId}!");
+                    },
+                  ),
+                ),
+              ]),
+            )
+            .toList(),
       ),
     );
   }
