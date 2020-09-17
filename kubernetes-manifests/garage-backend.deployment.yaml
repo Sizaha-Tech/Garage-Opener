@@ -1,21 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-garage-backend
+  name: garage-backend
   labels:
-    app: python-garage
-    tier: backend
+    app: garage-backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: python-garage
-      tier: backend
+      app: garage-backend
   template:
     metadata:
       labels:
-        app: python-garage
-        tier: backend
+        app: garage-backend
     spec:
       containers:
       - name: backend
@@ -23,6 +20,7 @@ spec:
         ports:
         - name: http-server
           containerPort: 8080
+          protocol: TCP
         env:
         # Replace with your Firebase project ID.
         - name: FIREBASE_PROJECT_ID

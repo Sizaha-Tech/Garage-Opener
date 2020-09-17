@@ -21,9 +21,9 @@
         "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
         "profile": "cloudbuild",
         "watch": true,
-        "cleanUp": true,
+        "cleanUp": false,
         "portForward": true,
-        "imageRegistry": "gcr.io/household-iot-277519",
+        "imageRegistry": "gcr.io/household-iot-277519"
       },
       {
         "name": "Deploy on K8S - cloudbuild",
@@ -32,9 +32,17 @@
         "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
         "profile": "cloudbuild",
         "watch": false,
-        "cleanUp": true,
+        "cleanUp": false,
         "portForward": false,
-        "imageRegistry": "gcr.io/household-iot-277519"
+        "imageRegistry": "gcr.io/household-iot-277519",
+        "debug": [
+          {
+            "image": "python-garage-backend",
+            "sourceFileMap": {
+              "${workspaceFolder}/backend": "/app"
+            }
+          }
+        ]
       }
     ]
   }

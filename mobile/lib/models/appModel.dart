@@ -25,7 +25,7 @@ enum DeviceListState {
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
 class AppModel extends ChangeNotifier {
-  final String _sizahaFrontendUrl = 'http://35.202.40.231/';
+  final String _sizahaFrontendUrl = 'https://api.sizaha.com/';
 
   /// Internal, private state of the app.
   SignedinState _signinState = SignedinState.pendingAuthentication;

@@ -51,16 +51,9 @@ COMMAND_OPEN = 'OPEN'
 app = Flask(__name__)
 flask_cors.CORS(app)
 
-# Use a service account
-service_cred = service_account.Credentials.from_service_account_file(
-    filename='accounts/backendServiceAccount.json',
-    scopes=['https://www.googleapis.com/auth/cloud-platform'])
-service_api = googleapiclient.discovery.build(
-    'iam', 'v1', credentials=service_cred)
-
-
-cred = credentials.Certificate('accounts/backendServiceAccount.json')
-firebase_admin.initialize_app(cred)
+# Initialize APIs
+service_api = googleapiclient.discovery.build('iam', 'v1')
+firebase_admin.initialize_app()
 db = firestore.client()
 
 def get_hash(str):
@@ -214,14 +207,14 @@ def check_authorization(request):
 
     return None
 
-
-@app.route('/hello', methods=['GET'])
+@app.route('/', methods=['GET'])
 def hello():
-    """Returns a list of notes added by the current Firebase user."""
+    """Needed to make GCP ingress working."""
 
     return jsonify({
-            "hello": 'world!'
+            "whoami": 'Sizaha API Server'
         })
+
 
 @app.route('/device', methods=['POST', 'PUT'])
 def create_device():

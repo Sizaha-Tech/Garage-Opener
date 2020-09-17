@@ -61,9 +61,10 @@ class NavigationDestinationView extends StatelessWidget {
           alignment: Alignment.center,
         ),
         Container(
-          child: OutlineButton(
-            child: const Text('Register new device'),
-            textColor: Theme.of(context).buttonColor,
+          child: FlatButton(
+            child: const Text('Find devices...'),
+            textColor: Colors.white,
+            color: Colors.blue[300],
             onPressed: _findDevice,
           ),
           padding: const EdgeInsets.all(16),

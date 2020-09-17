@@ -1,0 +1,16 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: garage-api-ingress
+  labels:
+    app: python-garage
+    tier: backend
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: lb-ipv4-backend
+    networking.gke.io/managed-certificates: api-sizaha-ssl-cert
+    ingress.gcp.kubernetes.io/pre-shared-cert: api-sizaha-ssl-cert
+spec:
+    backend:
+        serviceName: python-garage-backend
+        servicePort: 80
