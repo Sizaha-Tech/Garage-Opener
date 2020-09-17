@@ -21,6 +21,7 @@ metadata:
     kubernetes.io/ingress.global-static-ip-name: lb-ipv4-backend
     networking.gke.io/managed-certificates: api-sizaha-ssl-cert
     ingress.gcp.kubernetes.io/pre-shared-cert: api-sizaha-ssl-cert
+    kubernetes.io/ingress.allow-http: "false"
 spec:
   backend:
     serviceName: garage-backend
