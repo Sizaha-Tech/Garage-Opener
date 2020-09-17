@@ -212,7 +212,7 @@ def hello():
     """Needed to make GCP ingress working."""
 
     return jsonify({
-            "whoami": 'Sizaha API Server'
+            "whoami": 'Sizaha API Server v1.0'
         })
 
 

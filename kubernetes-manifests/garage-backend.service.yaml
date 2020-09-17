@@ -12,23 +12,6 @@ spec:
     - port: 80
       targetPort: http-server
 ---
-apiVersion: v1
-kind: ReplicationController
-metadata:
-  name: garage-backend
-spec:
-  replicas: 3
-  template:
-    metadata:
-      labels:
-        app: garage-backend
-    spec:
-      containers:
-      - name: backend
-        image: python-garage-backend
-        ports:
-        - containerPort: 8080
----
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
