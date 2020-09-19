@@ -1,0 +1,20 @@
+Push image to SD card for RPi from image file:
+  
+  On Mac, first find where SD card is mounted with:
+
+     diskutil list
+
+  then unmount the SD disk with:
+
+    diskutil unmountDisk /dev/<disk>
+
+  then create image with:
+
+    sudo bash -c 'gzip -dc ./RPiOS-Lite-Sizaha-Final.img.gz | dd of=/dev/<disk> bs=65535'
+
+Capture SD card (after modifying it) into an image file:
+
+  sudo dd if=/dev/<disk> of=./RPiOS-Lite-Sizaha-Final.img bs=65535
+
+  gzip RPiOS-Lite-Sizaha-Final.img
+

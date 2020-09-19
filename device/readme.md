@@ -2,10 +2,11 @@
 
 ##0. Configure Raspbian OS
     0.1. Brun the image
-    0.2. Mount the image on PC/Mac. Add 'ssh' file to boot partition.
+    0.2. Mount the image on PC/Mac. Add 'ssh' file to boot partition. That will start sshd on boot, so we can remotely connect to it.
     0.3. Reboot Pi, log in with ssh.
     0.4. Change pi password with
         passwd
+      to following: sizaha2020!
     0.5. 
 
 ##1. Install missing OS packages:
@@ -50,7 +51,7 @@
         pip3 install -r device/requirements.txt
 
 
-##Building and Running Docker image on Raspberry Pi
+##Building and Running Docker image on Raspberry Pi (OBSOLETE)
 
 Needs to be done on Raspberry Pi. 
 
