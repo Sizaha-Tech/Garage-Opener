@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/models/appModel.dart';
 import 'package:mobile/widgets/deviceListView.dart';
+import 'package:mobile/widgets/deviceSetupView.dart';
 import 'package:mobile/widgets/signInView.dart';
 import 'package:provider/provider.dart';
-import 'package:wifi/wifi.dart';
 
 import 'accountView.dart';
 
@@ -25,7 +25,7 @@ class NavigationDestinationView extends StatelessWidget {
           case 0:
             return DeviceListView();
           case 1:
-            return createNewDeviceView(context);
+            return DeviceSetupView();
           default:
             return AccountView();
         }
@@ -48,41 +48,5 @@ class NavigationDestinationView extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Widget createNewDeviceView(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          child: const Text(
-              'Plug in your Garage opener device, start searching for by pressing:'),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
-        ),
-        Container(
-          child: FlatButton(
-            child: const Text('Find devices...'),
-            textColor: Colors.white,
-            color: Colors.blue[300],
-            onPressed: _findDevice,
-          ),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
-        ),
-      ],
-    );
-  }
-
-  _findDevice() async {
-    print('Clicked!');
-    // only work on Android.
-    List<WifiResult> wifiList = await Wifi.list('');
-    for (var wifi in wifiList) {
-      print('Found ssid "${wifi.ssid}".');
-      if (wifi.ssid.startsWith("Sizaha")) {
-        print('Found one!');
-      }
-    }
   }
 }
