@@ -60,11 +60,11 @@ class AppModel extends ChangeNotifier {
   String _deviceSSID = '';
   int _deviceSearchAttempt = 0;
   bool _deviceSearchStopped = false;
+  String _newDeviceName;
 
   String _targetSsid;
   String _targetPassphrase;
   String _currentSsid;
-  String _deviceIpAddress;
 
   /// An unmodifiable view of the items in the cart.
   SignedinState get signinState => _signinState;
@@ -75,8 +75,12 @@ class AppModel extends ChangeNotifier {
   String get userToken => _userToken;
   String get deviceSSID => _deviceSSID;
   String get currentSsid => _currentSsid;
-
   DeviceModel _newDeviceModel;
+
+  String get newDeviceName {
+    if (_newDeviceModel == null) return '';
+    return _newDeviceModel.deviceId;
+  }
 
   String get userDisplayName {
     if (_auth.currentUser == null) return '';
@@ -105,6 +109,8 @@ class AppModel extends ChangeNotifier {
       _deviceSSID = '';
       _deviceSearchAttempt = 0;
       _deviceSearchStopped = false;
+      _newDeviceName = '';
+      _targetSsid = '';
     }
     _deviceSetupPhase = phase;
     notifyListeners();
@@ -177,11 +183,12 @@ class AppModel extends ChangeNotifier {
   }
 
   startNewDeviceSetup() {
+    _newDeviceModel = null;
     setDeviceSetupPhase(DeviceSetupPhase.searchingForNewDevice);
     _detectDevice();
   }
 
-  stopDeviceSetup() {
+  stopDeviceSearch() {
     _deviceSearchStopped = true;
     setDeviceSetupPhase(DeviceSetupPhase.cancellingSearch);
   }
@@ -241,6 +248,7 @@ class AppModel extends ChangeNotifier {
       _startBootStrapping(_newDeviceModel);
 
       _devices.add(_newDeviceModel);
+      _newDeviceName = newDeviceName;
     } catch (e) {
       print('API call failed - $e');
       setDeviceSetupPhase(DeviceSetupPhase.cloudError);

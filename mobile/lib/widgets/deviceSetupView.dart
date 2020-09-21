@@ -32,24 +32,35 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
       case DeviceSetupPhase.cancellingSearch:
         return searchingForNewDeviceView(model);
       case DeviceSetupPhase.deviceNotFound:
-        return deviceNotFoundView(model);
+        return errorView(model,
+            'No new devices found. Please make sure your new device is plugged in and close to your phone.');
       case DeviceSetupPhase.foundNewDevice:
         return foundNewDeviceView(model);
       case DeviceSetupPhase.deviceNaming:
         return deviceNamingView(model);
-      default:
-        return createNotImplemetedView();
-/*        
       case DeviceSetupPhase.registeringDeviceAccount:
-        return registeringDeviceAccountView(model);
+        return uninterruptiblePhaseView(model,
+            'Registering your new device with the Sizaha cloud. Plase wait...');
         break;
       case DeviceSetupPhase.bootstrappingDevice:
-        return bootstrappingDeviceView(model);
+        return uninterruptiblePhaseView(
+            model, 'Configuring you new device. Please wait...');
         break;
       case DeviceSetupPhase.completedSetup:
-        return completedSetupView(model);
+        return errorView(
+            model,
+            'Device setup succeeded. You can find it in '
+            'your device list registered as "${model.newDeviceName}"');
         break;
-*/
+      case DeviceSetupPhase.cloudError:
+        return errorView(
+            model, 'Device can not be registered with Sizaha cloud.');
+        break;
+      case DeviceSetupPhase.deviceError:
+        return errorView(model, 'Device setup failed.');
+        break;
+      default:
+        return createNotImplemetedView();
     }
   }
 
@@ -78,7 +89,7 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
         ),
         Container(
           child: FlatButton(
-            child: const Text('Next'),
+            child: const Text('Start Registration'),
             textColor: Colors.white,
             color: Colors.blue[300],
             onPressed: appModel.startNewDeviceSetup,
@@ -93,22 +104,59 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
   Widget searchingForNewDeviceView(AppModel appModel) {
     bool cancelling =
         appModel.deviceSetupPhase == DeviceSetupPhase.cancellingSearch;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    var bottomNavigationBarItems = <BottomNavigationBarItem>[
+      BottomNavigationBarItem(
+        icon: const Icon(Icons.cancel),
+        // ignore: deprecated_member_use
+        title: Text(cancelling ? 'Cancelling...' : 'Cancel'),
+      ),
+      BottomNavigationBarItem(
+        icon: const Icon(Icons.navigate_next),
+        // ignore: deprecated_member_use
+        title: Text('Wait...'),
+      ),
+    ];
+
+    return Scaffold(
+      body: Center(
+        child: Container(
+          padding: EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Text(
+                'Searching for new devices... Please wait.'
+                'This can take few minutes.',
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        showUnselectedLabels: true,
+        items: bottomNavigationBarItems,
+        currentIndex: 1,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          if (index == 0 && !cancelling) {
+            appModel.stopDeviceSearch();
+          }
+        },
+        selectedItemColor: colorScheme.onPrimary,
+        unselectedItemColor: colorScheme.onPrimary,
+        backgroundColor: colorScheme.primary,
+      ),
+    );
+  }
+
+  Widget uninterruptiblePhaseView(AppModel appModel, String message) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Container(
-          child: const Text(
-              'Searching for new devices... Please wait... This can take few minutes.'),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
-        ),
-        Container(
-          child: FlatButton(
-            child: Text(cancelling ? 'Cancelling...' : 'Cancel'),
-            textColor: Colors.white,
-            color: Colors.red[300],
-            onPressed: cancelling ? null : () => appModel.stopDeviceSetup(),
-          ),
+          child: Text(message),
           padding: const EdgeInsets.all(16),
           alignment: Alignment.center,
         ),
@@ -116,13 +164,12 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
     );
   }
 
-  Widget deviceNotFoundView(AppModel appModel) {
+  Widget errorView(AppModel appModel, String errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Container(
-          child: const Text(
-              'No new devices found. Please make sure your new device is plugged in and close to your phone.'),
+          child: Text(errorMessage),
           padding: const EdgeInsets.all(16),
           alignment: Alignment.center,
         ),
@@ -142,49 +189,64 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
   }
 
   Widget foundNewDeviceView(AppModel appModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          child: const Text(
-              'New Sizaha garage controller found! Please confirm the device name below.'),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
-        ),
-        Container(
-          child: Text(
-            appModel.deviceSSID,
-            style: new TextStyle(
-              fontSize: 20.0,
-              color: Colors.yellow[300],
-            ),
+    final colorScheme = Theme.of(context).colorScheme;
+    var bottomNavigationBarItems = <BottomNavigationBarItem>[
+      BottomNavigationBarItem(
+        icon: const Icon(Icons.cancel),
+        // ignore: deprecated_member_use
+        title: const Text('Cancel'),
+      ),
+      BottomNavigationBarItem(
+        icon: const Icon(Icons.navigate_next),
+        // ignore: deprecated_member_use
+        title: const Text('Next'),
+      ),
+    ];
+
+    return Scaffold(
+      body: Center(
+        child: Container(
+          padding: EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Container(
+                child: const Text('New Sizaha garage controller found! '
+                    'Please confirm the device name below.'),
+                padding: const EdgeInsets.all(16),
+                alignment: Alignment.center,
+              ),
+              Container(
+                child: Text(
+                  appModel.deviceSSID,
+                  style: new TextStyle(
+                    fontSize: 20.0,
+                    color: Colors.yellow[300],
+                  ),
+                ),
+                padding: const EdgeInsets.all(16),
+                alignment: Alignment.center,
+              ),
+            ],
           ),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
         ),
-        Container(
-          child: FlatButton(
-            child: const Text('Cancel'),
-            textColor: Colors.white,
-            color: Colors.red[300],
-            onPressed: () =>
-                appModel.setDeviceSetupPhase(DeviceSetupPhase.notStarted),
-          ),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
-        ),
-        Container(
-          child: FlatButton(
-            child: const Text('Next'),
-            textColor: Colors.white,
-            color: Colors.blue[300],
-            onPressed: () =>
-                appModel.setDeviceSetupPhase(DeviceSetupPhase.deviceNaming),
-          ),
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.center,
-        ),
-      ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        showUnselectedLabels: true,
+        items: bottomNavigationBarItems,
+        currentIndex: 1,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          if (index == 0) {
+            appModel.setDeviceSetupPhase(DeviceSetupPhase.notStarted);
+          } else {
+            appModel.setDeviceSetupPhase(DeviceSetupPhase.deviceNaming);
+          }
+        },
+        selectedItemColor: colorScheme.onPrimary,
+        unselectedItemColor: colorScheme.onPrimary,
+        backgroundColor: colorScheme.primary,
+      ),
     );
   }
 
@@ -218,6 +280,7 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
                   'Please enter device info:',
                 ),
                 TextFormField(
+                  autofocus: true,
                   decoration: InputDecoration(
                     hintText: 'New device name',
                   ),
@@ -235,7 +298,7 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
                 Text(
                   'Please enter your WiFi info:',
                 ),
-                // TODO: Split WiFi to another screen.
+                // TODO: Maybe split WiFi to another screen?
                 TextFormField(
                   decoration: InputDecoration(
                     hintText: 'SSID',
@@ -278,9 +341,9 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
         onTap: (index) {
           print(index);
           if (index == 0)
-            _cancelSetup(appModel);
+            appModel.setDeviceSetupPhase(DeviceSetupPhase.notStarted);
           else
-            _moveNext(appModel);
+            _startBootstraping(appModel);
         },
         selectedItemColor: colorScheme.onPrimary,
         unselectedItemColor: colorScheme.onPrimary,
@@ -289,11 +352,7 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
     );
   }
 
-  void _cancelSetup(AppModel appModel) {
-    // TODO
-  }
-
-  void _moveNext(AppModel appModel) {
+  void _startBootstraping(AppModel appModel) {
     // next
     if (_formKey.currentState.validate()) {
       String deviceName = _deviceNameController.text;

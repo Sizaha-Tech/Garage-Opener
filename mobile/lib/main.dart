@@ -72,42 +72,54 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           title: Text('Account')),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: PageTransitionSwitcher(
-          child: NavigationDestinationView(
-              // Adding [UniqueKey] to make sure the widget rebuilds when transitioning.
-              key: UniqueKey(),
-              selectedView: _currentIndex),
-          transitionBuilder: (child, animation, secondaryAnimation) {
-            return FadeThroughTransition(
-              child: child,
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        showUnselectedLabels: true,
-        items: bottomNavigationBarItems,
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: textTheme.caption.fontSize,
-        unselectedFontSize: textTheme.caption.fontSize,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+    var appBar = AppBar(
+      automaticallyImplyLeading: false,
+      title: Text(widget.title),
+    );
+
+    var mainBody = Center(
+      child: PageTransitionSwitcher(
+        child: NavigationDestinationView(
+            // Adding [UniqueKey] to make sure the widget rebuilds when transitioning.
+            key: UniqueKey(),
+            selectedView: _currentIndex),
+        transitionBuilder: (child, animation, secondaryAnimation) {
+          return FadeThroughTransition(
+            child: child,
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+          );
         },
-        selectedItemColor: colorScheme.onPrimary,
-        unselectedItemColor: colorScheme.onPrimary.withOpacity(0.38),
-        backgroundColor: colorScheme.primary,
       ),
     );
+
+    var navBar = BottomNavigationBar(
+      showUnselectedLabels: true,
+      items: bottomNavigationBarItems,
+      currentIndex: _currentIndex,
+      type: BottomNavigationBarType.fixed,
+      selectedFontSize: textTheme.caption.fontSize,
+      unselectedFontSize: textTheme.caption.fontSize,
+      onTap: (index) {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      selectedItemColor: colorScheme.onPrimary,
+      unselectedItemColor: colorScheme.onPrimary.withOpacity(0.38),
+      backgroundColor: colorScheme.primary,
+    );
+
+    if (appModel.deviceSetupPhase == DeviceSetupPhase.notStarted)
+      return Scaffold(
+        appBar: appBar,
+        body: mainBody,
+        bottomNavigationBar: navBar,
+      );
+    else
+      return Scaffold(
+        appBar: appBar,
+        body: mainBody,
+      );
   }
 }

@@ -21,13 +21,18 @@ class NavigationDestinationView extends StatelessWidget {
       case SignedinState.pendingAuthentication:
         return createProgressView();
       case SignedinState.authenticated:
-        switch (selectedView) {
-          case 0:
-            return DeviceListView();
-          case 1:
-            return DeviceSetupView();
-          default:
-            return AccountView();
+        // If we are registering a new device, focus on that screen.
+        if (appModel.deviceSetupPhase != DeviceSetupPhase.notStarted) {
+          return DeviceSetupView();
+        } else {
+          switch (selectedView) {
+            case 0:
+              return DeviceListView();
+            case 1:
+              return DeviceSetupView();
+            default:
+              return AccountView();
+          }
         }
     }
   }
