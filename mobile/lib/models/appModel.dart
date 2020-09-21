@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http show get, post;
-import 'package:mobile/models/deviceCreteRequest.dart';
+import 'package:mobile/models/deviceCreateRequest.dart';
+import 'package:mobile/models/deviceSetupRequest.dart';
 import 'package:wifi/wifi.dart';
 
+import 'activateDeviceRequest.dart';
 import 'deviceModel.dart';
 
 // Account sign-in state
@@ -34,7 +36,8 @@ enum DeviceSetupPhase {
   registeringDeviceAccount,
   bootstrappingDevice,
   completedSetup,
-  cloudError
+  cloudError,
+  deviceError,
 }
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -58,6 +61,11 @@ class AppModel extends ChangeNotifier {
   int _deviceSearchAttempt = 0;
   bool _deviceSearchStopped = false;
 
+  String _targetSsid;
+  String _targetPassphrase;
+  String _currentSsid;
+  String _deviceIpAddress;
+
   /// An unmodifiable view of the items in the cart.
   SignedinState get signinState => _signinState;
   DeviceListState get deviceListState => _deviceListState;
@@ -66,6 +74,9 @@ class AppModel extends ChangeNotifier {
       UnmodifiableListView(_devices);
   String get userToken => _userToken;
   String get deviceSSID => _deviceSSID;
+  String get currentSsid => _currentSsid;
+
+  DeviceModel _newDeviceModel;
 
   String get userDisplayName {
     if (_auth.currentUser == null) return '';
@@ -176,7 +187,8 @@ class AppModel extends ChangeNotifier {
   }
 
   _detectDevice() async {
-    // only work on Android.
+    // This will probaly only work on Android. Need to test iOS.
+    _currentSsid = await Wifi.ssid;
     List<WifiResult> wifiList = await Wifi.list('');
     for (var wifi in wifiList) {
       print('Found ssid "${wifi.ssid}".');
@@ -209,6 +221,7 @@ class AppModel extends ChangeNotifier {
     setDeviceSetupPhase(DeviceSetupPhase.registeringDeviceAccount);
     try {
       var request = DeviceCreateRequest(
+        // TODO: Figure out what if anything is app_id going to be used for.
         appId: 'app123',
         deviceId: newDeviceName,
         deviceName: newDeviceName,
@@ -223,24 +236,106 @@ class AppModel extends ChangeNotifier {
       }
 
       Map<String, dynamic> results = json.decode(response.body);
-      final deviceModel = new DeviceModel.fromJson(results);
+      _newDeviceModel = new DeviceModel.fromJson(results);
 
-      _startBootStrapping(deviceModel);
+      _startBootStrapping(_newDeviceModel);
 
-      _devices.add(deviceModel);
-      setDeviceRetrievalState(DeviceListState.loaded);
+      _devices.add(_newDeviceModel);
     } catch (e) {
       print('API call failed - $e');
       setDeviceSetupPhase(DeviceSetupPhase.cloudError);
     }
   }
 
-  _startBootStrapping(DeviceModel device) {
+  _startBootStrapping(DeviceModel device) async {
     setDeviceSetupPhase(DeviceSetupPhase.bootstrappingDevice);
 
-    // TODO: Get current SSID + password (if we can't, show UI)
-    // TODO: Connect to device's SSID
-    // TODO: Call http://192.168.45.1:8080/setup_device
-    // TODO: Reconnect to the main
+    // Connnect to the device's SSID.
+    WifiState result = await Wifi.connection(_targetSsid, _targetPassphrase);
+    switch (result) {
+      case WifiState.already:
+      case WifiState.success:
+        // Get IP address of the device.
+        String myIp = await Wifi.ip;
+        _configureDevice(_getDeviceIpFromPhoneIp(myIp));
+        break;
+      case WifiState.error:
+        setDeviceSetupPhase(DeviceSetupPhase.deviceError);
+        break;
+    }
+  }
+
+  String _getDeviceIpFromPhoneIp(String ip) {
+    // Device's IP is always ending with .1
+    return ip.substring(0, ip.lastIndexOf('.')) + '.1';
+  }
+
+  _configureDevice(String newDeviceIp) async {
+    setDeviceSetupPhase(DeviceSetupPhase.registeringDeviceAccount);
+    String deviceUrlBase = 'http://$newDeviceIp:8080/';
+    if (_sendDeviceConfiguation(deviceUrlBase)) {
+      _rebootDevice(deviceUrlBase);
+      _devices.add(_newDeviceModel);
+      setDeviceRetrievalState(DeviceListState.loaded);
+      setDeviceSetupPhase(DeviceSetupPhase.completedSetup);
+    } else {
+      setDeviceSetupPhase(DeviceSetupPhase.deviceError);
+    }
+  }
+
+  _sendDeviceConfiguation(String deviceUrlBase) async {
+    try {
+      var request = DeviceSetupRequest(
+        ssid: _targetSsid,
+        passphrase: _targetPassphrase,
+        inSub: _newDeviceModel.inSubscription,
+        outSub: _newDeviceModel.outSubscription,
+        serviceKeyBlob: _newDeviceModel.deviceAccount,
+      );
+      final response = await http.post('$deviceUrlBase/setup_device',
+          body: json.encode(request));
+      if (response.statusCode != 200) {
+        print('API call HTTP error = ${response.statusCode}');
+        return true;
+      }
+    } catch (e) {
+      print('API call failed - $e');
+    }
+    return false;
+  }
+
+  _rebootDevice(String deviceUrlBase) async {
+    try {
+      await http.get('$deviceUrlBase/shutdown');
+      // It does no matter what thr response is when device reboots.
+    } catch (e) {
+      print('API call failed - $e');
+      setDeviceSetupPhase(DeviceSetupPhase.cloudError);
+    }
+  }
+
+  void setWifiInfo(String ssid, String passphrase) {
+    _targetSsid = ssid;
+    _targetPassphrase = passphrase;
+  }
+
+  activateDevice(String deviceId) async {
+    try {
+      var request = ActivateDeviceRequest(
+        command: 'OPEN',
+      );
+      final response = await http.post(
+          '$_sizahaFrontendUrl//device/' + deviceId + '/run',
+          headers: {'Authorization': 'Bearer ' + _userToken},
+          body: json.encode(request));
+
+      if (response.statusCode != 200) {
+        print('API call HTTP error = ${response.statusCode}');
+        return true;
+      }
+    } catch (e) {
+      print('API call failed - $e');
+    }
+    return false;
   }
 }

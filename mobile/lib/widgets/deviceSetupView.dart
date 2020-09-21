@@ -12,6 +12,8 @@ class DeviceSetupView extends StatefulWidget {
 class DeviceSetupViewState extends State<DeviceSetupView> {
   final _formKey = GlobalKey<FormState>();
   final _deviceNameController = TextEditingController();
+  final _ssidController = TextEditingController();
+  final _passkeyController = TextEditingController();
 
   @override
   void dispose() {
@@ -187,21 +189,37 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
   }
 
   Widget deviceNamingView(AppModel appModel) {
+    _ssidController.text = appModel.currentSsid;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    var bottomNavigationBarItems = <BottomNavigationBarItem>[
+      BottomNavigationBarItem(
+        icon: const Icon(Icons.cancel),
+        // ignore: deprecated_member_use
+        title: Text('Cancel'),
+      ),
+      BottomNavigationBarItem(
+        icon: const Icon(Icons.navigate_next),
+        // ignore: deprecated_member_use
+        title: Text('Next'),
+      ),
+    ];
+
     return Scaffold(
       body: Center(
         child: Container(
-          padding: EdgeInsets.all(80.0),
+          padding: EdgeInsets.all(20.0),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Text(
-                  'What would you like this device to be identified as?',
+                  'Please enter device info:',
                 ),
                 TextFormField(
                   decoration: InputDecoration(
-                    hintText: 'Device name:',
+                    hintText: 'New device name',
                   ),
                   controller: _deviceNameController,
                   validator: (value) {
@@ -212,28 +230,77 @@ class DeviceSetupViewState extends State<DeviceSetupView> {
                   },
                 ),
                 SizedBox(
-                  height: 24,
+                  height: 20,
                 ),
-                FlatButton(
-                  color: Colors.blue[300],
-                  child: Text('Next'),
-                  onPressed: () {
-                    if (_formKey.currentState.validate()) {
-                      String deviceName = _deviceNameController.text;
-                      appModel.createCloudDevice(deviceName);
-/*                      
-                      Scaffold.of(context).showSnackBar(SnackBar(
-                          content: Text(
-                              'Registering device "${_deviceNameController.text}"')));
-*/
+                Text(
+                  'Please enter your WiFi info:',
+                ),
+                // TODO: Split WiFi to another screen.
+                TextFormField(
+                  decoration: InputDecoration(
+                    hintText: 'SSID',
+                  ),
+                  controller: _ssidController,
+                  validator: (value) {
+                    if (value.isEmpty) {
+                      return 'Please enter some text';
+                    } else if (value.length > 32) {
+                      return 'SSID name is too long';
                     }
+                    return null;
                   },
-                )
+                ),
+                TextFormField(
+                  decoration: InputDecoration(
+                    hintText: 'Passphrase',
+                  ),
+                  controller: _passkeyController,
+                  obscureText: true,
+                  validator: (value) {
+                    if (value.length < 8) {
+                      return 'Passphrase must be at least 8 characters long';
+                    } else if (value.length > 63) {
+                      return 'Passphrase is too long';
+                    }
+                    return null;
+                  },
+                ),
               ],
             ),
           ),
         ),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        showUnselectedLabels: true,
+        items: bottomNavigationBarItems,
+        currentIndex: 1,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          print(index);
+          if (index == 0)
+            _cancelSetup(appModel);
+          else
+            _moveNext(appModel);
+        },
+        selectedItemColor: colorScheme.onPrimary,
+        unselectedItemColor: colorScheme.onPrimary,
+        backgroundColor: colorScheme.primary,
+      ),
     );
+  }
+
+  void _cancelSetup(AppModel appModel) {
+    // TODO
+  }
+
+  void _moveNext(AppModel appModel) {
+    // next
+    if (_formKey.currentState.validate()) {
+      String deviceName = _deviceNameController.text;
+      String ssid = _ssidController.text;
+      String passphrase = _passkeyController.text;
+      appModel.setWifiInfo(ssid, passphrase);
+      appModel.createCloudDevice(deviceName);
+    }
   }
 }
