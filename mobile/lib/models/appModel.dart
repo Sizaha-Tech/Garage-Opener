@@ -234,8 +234,11 @@ class AppModel extends ChangeNotifier {
         deviceName: newDeviceName,
       );
       final response = await http.post('$_sizahaFrontendUrl/device',
-          headers: {'Authorization': 'Bearer ' + _userToken},
-          body: json.encode(request));
+          headers: {
+            'Authorization': 'Bearer ' + _userToken,
+            'Content-type': 'application/json; charset=utf-8',
+          },
+          body: json.encode(request.toJson()));
       if (response.statusCode != 200) {
         print('API call HTTP error = ${response.statusCode}');
         setDeviceSetupPhase(DeviceSetupPhase.cloudError);
@@ -301,7 +304,7 @@ class AppModel extends ChangeNotifier {
         serviceKeyBlob: _newDeviceModel.deviceAccount,
       );
       final response = await http.post('$deviceUrlBase/setup_device',
-          body: json.encode(request));
+          body: json.encode(request.toJson()));
       if (response.statusCode != 200) {
         print('API call HTTP error = ${response.statusCode}');
         return true;
@@ -335,7 +338,7 @@ class AppModel extends ChangeNotifier {
       final response = await http.post(
           '$_sizahaFrontendUrl//device/' + deviceId + '/run',
           headers: {'Authorization': 'Bearer ' + _userToken},
-          body: json.encode(request));
+          body: json.encode(request.toJson()));
 
       if (response.statusCode != 200) {
         print('API call HTTP error = ${response.statusCode}');
