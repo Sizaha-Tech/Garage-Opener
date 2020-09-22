@@ -86,7 +86,7 @@ def create_topic(project_id, topic_name):
     """Create a new Pub/Sub topic."""
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, topic_name)
-    topic = publisher.create_topic(topic_path)
+    topic = publisher.create_topic(request={"name": topic_path})
 
 def create_subscription(project_id, topic_name, subscription_name):
     """Create a new pull subscription on the given topic."""
@@ -95,7 +95,7 @@ def create_subscription(project_id, topic_name, subscription_name):
     subscription_path = subscriber.subscription_path(
         project_id, subscription_name)
     subscription = subscriber.create_subscription(
-        subscription_path, topic_path)
+        request={"name": subscription_path, "topic": topic_path})
 
 def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_account):
     """Sets the IAM policy for a topic."""
@@ -118,7 +118,8 @@ def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_a
         role='roles/pubsub.subscriber',
         members=[subscriber_account_member])
     # Set the policy
-    policy = client.set_iam_policy(topic_path, policy)
+    policy = client.set_iam_policy(
+        request={"resource":topic_path, "policy": policy})
 
 def set_pubsub_subscription_policy(project, subscription_name, subscription_account):
     """Sets the IAM policy for a subscription."""
@@ -134,7 +135,8 @@ def set_pubsub_subscription_policy(project, subscription_name, subscription_acco
         role='roles/pubsub.subscriber',
         members=[subscription_account_member])
     # Set the policy
-    policy = client.set_iam_policy(subscription_path, policy)
+    policy = client.set_iam_policy(
+        request={"resource":subscription_path, "policy":policy})
 
 def setup_new_device(user, app_id, device_id, device_name):
     device_hash = get_hash(user.id + device_id)
