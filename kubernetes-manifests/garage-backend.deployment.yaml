@@ -29,3 +29,5 @@ spec:
           value: 'true'
         - name: PORT
           value: '8080'
+        - name: 'GOOGLE_APPLICATION_CREDENTIALS'
+          value: '/app/accounts/backendServiceAccount.json'

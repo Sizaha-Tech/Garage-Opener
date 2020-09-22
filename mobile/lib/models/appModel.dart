@@ -43,7 +43,11 @@ enum DeviceSetupPhase {
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
 class AppModel extends ChangeNotifier {
+  // API frontend URL.
   final String _sizahaFrontendUrl = 'https://api.sizaha.com/';
+
+  // Device bootstrap SSID passkey.
+  static const String _deviceSSIDPassphrase = 'sizaha123';
 
   // Make max 30 wifi scans, every 10 sec ~ 5 min total search time.
   final int maxWifiScanCount = 30;
@@ -248,10 +252,9 @@ class AppModel extends ChangeNotifier {
       Map<String, dynamic> results = json.decode(response.body);
       _newDeviceModel = new DeviceModel.fromJson(results);
 
-      _startBootStrapping(_newDeviceModel);
-
       _devices.add(_newDeviceModel);
       _newDeviceName = newDeviceName;
+      _startBootStrapping(_newDeviceModel);
     } catch (e) {
       print('API call failed - $e');
       setDeviceSetupPhase(DeviceSetupPhase.cloudError);
@@ -262,7 +265,8 @@ class AppModel extends ChangeNotifier {
     setDeviceSetupPhase(DeviceSetupPhase.bootstrappingDevice);
 
     // Connnect to the device's SSID.
-    WifiState result = await Wifi.connection(_targetSsid, _targetPassphrase);
+    WifiState result =
+        await Wifi.connection(_deviceSSID, _deviceSSIDPassphrase);
     switch (result) {
       case WifiState.already:
       case WifiState.success:
@@ -283,8 +287,9 @@ class AppModel extends ChangeNotifier {
 
   _configureDevice(String newDeviceIp) async {
     setDeviceSetupPhase(DeviceSetupPhase.registeringDeviceAccount);
-    String deviceUrlBase = 'http://$newDeviceIp:8080/';
-    if (_sendDeviceConfiguation(deviceUrlBase)) {
+    String deviceUrlBase = 'http://192.168.45.1:8080';
+    var result = await _sendDeviceConfiguation(deviceUrlBase);
+    if (result) {
       _rebootDevice(deviceUrlBase);
       _devices.add(_newDeviceModel);
       setDeviceRetrievalState(DeviceListState.loaded);
@@ -304,6 +309,9 @@ class AppModel extends ChangeNotifier {
         serviceKeyBlob: _newDeviceModel.deviceAccount,
       );
       final response = await http.post('$deviceUrlBase/setup_device',
+          headers: {
+            'Content-type': 'application/json; charset=utf-8',
+          },
           body: json.encode(request.toJson()));
       if (response.statusCode != 200) {
         print('API call HTTP error = ${response.statusCode}');

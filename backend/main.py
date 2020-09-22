@@ -52,8 +52,19 @@ app = Flask(__name__)
 flask_cors.CORS(app)
 
 # Initialize APIs
-service_api = googleapiclient.discovery.build('iam', 'v1')
-firebase_admin.initialize_app()
+##
+## service_api = googleapiclient.discovery.build('iam', 'v1')
+## firebase_admin.initialize_app()
+## db = firestore.client()
+
+# Use a service account	# Initialize APIs
+service_cred = service_account.Credentials.from_service_account_file(
+    filename='accounts/backendServiceAccount.json',
+    scopes=['https://www.googleapis.com/auth/cloud-platform'])
+service_api = googleapiclient.discovery.build(
+    'iam', 'v1', credentials=service_cred)
+cred = credentials.Certificate('accounts/backendServiceAccount.json')
+firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 def get_hash(str):
@@ -90,8 +101,9 @@ def create_topic(project_id, topic_name):
 
 def create_subscription(project_id, topic_name, subscription_name):
     """Create a new pull subscription on the given topic."""
+    publisher = pubsub_v1.PublisherClient()
     subscriber = pubsub_v1.SubscriberClient()
-    topic_path = subscriber.topic_path(project_id, topic_name)
+    topic_path = publisher.topic_path(project_id, topic_name)
     subscription_path = subscriber.subscription_path(
         project_id, subscription_name)
     subscription = subscriber.create_subscription(
