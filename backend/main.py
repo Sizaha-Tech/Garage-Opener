@@ -97,11 +97,12 @@ def create_subscription(project_id, topic_name, subscription_name):
     subscription = subscriber.create_subscription(
         request={"name": subscription_path, "topic": topic_path})
 
+
 def set_pubsub_topic_policy(project, topic_name, publisher_account, subscriber_account):
     """Sets the IAM policy for a topic."""
     client = pubsub_v1.PublisherClient()
     topic_path = client.topic_path(project, topic_name)
-    policy = client.get_iam_policy(topic_path)
+    policy = client.get_iam_policy({"resource":topic_path})
     # Add the service account policy for the topic.
     publisher_account_member = "serviceAccount:%s" % publisher_account
     subscriber_account_member = "serviceAccount:%s" % subscriber_account
@@ -125,7 +126,7 @@ def set_pubsub_subscription_policy(project, subscription_name, subscription_acco
     """Sets the IAM policy for a subscription."""
     client = pubsub_v1.SubscriberClient()
     subscription_path = client.subscription_path(project, subscription_name)
-    policy = client.get_iam_policy(subscription_path)
+    policy = client.get_iam_policy({"resource":subscription_path})
     # Add the service account policy for the topic.
     subscription_account_member = "serviceAccount:%s" % subscription_account
     policy.bindings.add(
