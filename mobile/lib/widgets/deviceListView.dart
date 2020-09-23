@@ -37,7 +37,7 @@ class _DeviceList extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         verticalDirection: VerticalDirection.down,
         children: <Widget>[
-          Expanded(child: dataBody(model.devices)),
+          Expanded(child: dataBody(model)),
           Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
@@ -53,7 +53,8 @@ class _DeviceList extends StatelessWidget {
         ]);
   }
 
-  SingleChildScrollView dataBody(List<DeviceModel> devices) {
+  SingleChildScrollView dataBody(AppModel model) {
+    List<DeviceModel> devices = model.devices;
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: DataTable(
@@ -82,7 +83,7 @@ class _DeviceList extends StatelessWidget {
                     textColor: Colors.white,
                     color: Colors.red[300],
                     onPressed: () {
-                      print("Pressed device ${device.deviceId}!");
+                      model.activateDevice(device.deviceId);
                     },
                   ),
                 ),

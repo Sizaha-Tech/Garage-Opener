@@ -50,7 +50,8 @@ class AppModel extends ChangeNotifier {
   static const String _deviceSSIDPassphrase = 'sizaha123';
 
   // Make max 30 wifi scans, every 10 sec ~ 5 min total search time.
-  final int maxWifiScanCount = 30;
+  final int _maxWifiScanCount = 30;
+  final int _maxIpWaitCount = 10;
 
   /// Internal, private state of the app.
   SignedinState _signinState = SignedinState.pendingAuthentication;
@@ -65,6 +66,7 @@ class AppModel extends ChangeNotifier {
   int _deviceSearchAttempt = 0;
   bool _deviceSearchStopped = false;
   String _newDeviceName;
+  int _ipWaitCount = 10;
 
   String _targetSsid;
   String _targetPassphrase;
@@ -113,6 +115,7 @@ class AppModel extends ChangeNotifier {
       _deviceSSID = '';
       _deviceSearchAttempt = 0;
       _deviceSearchStopped = false;
+      _ipWaitCount = 0;
       _newDeviceName = '';
       _targetSsid = '';
     }
@@ -212,7 +215,7 @@ class AppModel extends ChangeNotifier {
 
     // Wait 10 seconds and try the search again
     _deviceSearchAttempt++;
-    if (_deviceSearchAttempt > maxWifiScanCount || _deviceSearchStopped) {
+    if (_deviceSearchAttempt > _maxWifiScanCount || _deviceSearchStopped) {
       setDeviceSetupPhase(DeviceSetupPhase.deviceNotFound);
       return;
     }
@@ -271,8 +274,26 @@ class AppModel extends ChangeNotifier {
       case WifiState.already:
       case WifiState.success:
         // Get IP address of the device.
-        String myIp = await Wifi.ip;
-        _configureDevice(_getDeviceIpFromPhoneIp(myIp));
+//        String myIp = await Wifi.ip;
+//        _configureDevice(_getDeviceIpFromPhoneIp(myIp));
+
+        Future.delayed(const Duration(milliseconds: 10000), () {
+          _configureDevice();
+        });
+/*
+        if (myIp.startsWith('192.168.45.')) {
+          _configureDevice(_getDeviceIpFromPhoneIp(myIp));
+        } else {
+          Future.delayed(const Duration(milliseconds: 3000), () {
+            _ipWaitCount++;
+            if (_ipWaitCount > _maxIpWaitCount) {
+              setDeviceSetupPhase(DeviceSetupPhase.deviceError);
+              return;
+            }
+            _startBootStrapping(device);
+          });
+        }
+*/
         break;
       case WifiState.error:
         setDeviceSetupPhase(DeviceSetupPhase.deviceError);
@@ -285,8 +306,7 @@ class AppModel extends ChangeNotifier {
     return ip.substring(0, ip.lastIndexOf('.')) + '.1';
   }
 
-  _configureDevice(String newDeviceIp) async {
-    setDeviceSetupPhase(DeviceSetupPhase.registeringDeviceAccount);
+  _configureDevice() async {
     String deviceUrlBase = 'http://192.168.45.1:8080';
     var result = await _sendDeviceConfiguation(deviceUrlBase);
     if (result) {
@@ -306,17 +326,20 @@ class AppModel extends ChangeNotifier {
         passphrase: _targetPassphrase,
         inSub: _newDeviceModel.inSubscription,
         outSub: _newDeviceModel.outSubscription,
-        serviceKeyBlob: _newDeviceModel.deviceAccount,
+        serviceKeyBlob: _newDeviceModel.deviceKey.privateKeyData,
       );
+      final requestBody = json.encode(request.toJson());
+      print('$deviceUrlBase/setup_device');
+      print(requestBody);
       final response = await http.post('$deviceUrlBase/setup_device',
           headers: {
             'Content-type': 'application/json; charset=utf-8',
           },
-          body: json.encode(request.toJson()));
-      if (response.statusCode != 200) {
-        print('API call HTTP error = ${response.statusCode}');
-        return true;
-      }
+          body: requestBody);
+
+      if (response.statusCode == 200) return true;
+
+      print('API call HTTP error = ${response.statusCode}');
     } catch (e) {
       print('API call failed - $e');
     }
@@ -325,6 +348,7 @@ class AppModel extends ChangeNotifier {
 
   _rebootDevice(String deviceUrlBase) async {
     try {
+      print('$deviceUrlBase/shutdown');
       await http.get('$deviceUrlBase/shutdown');
       // It does no matter what thr response is when device reboots.
     } catch (e) {
@@ -343,15 +367,17 @@ class AppModel extends ChangeNotifier {
       var request = ActivateDeviceRequest(
         command: 'OPEN',
       );
-      final response = await http.post(
-          '$_sizahaFrontendUrl//device/' + deviceId + '/run',
-          headers: {'Authorization': 'Bearer ' + _userToken},
-          body: json.encode(request.toJson()));
+      final response =
+          await http.post('$_sizahaFrontendUrl/device/' + deviceId + '/run',
+              headers: {
+                'Authorization': 'Bearer ' + _userToken,
+                'Content-type': 'application/json; charset=utf-8',
+              },
+              body: json.encode(request.toJson()));
 
-      if (response.statusCode != 200) {
-        print('API call HTTP error = ${response.statusCode}');
-        return true;
-      }
+      if (response.statusCode == 200) return true;
+
+      print('API call HTTP error = ${response.statusCode}');
     } catch (e) {
       print('API call failed - $e');
     }
