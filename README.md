@@ -63,7 +63,7 @@ The **Firestore** is the database where the data is saved. This is where a track
 
 The mobile application is the client-side of the of the platform. It allows the user to activate the garage door, connect to the Raspberry Pi device during the bootstrapping process, and other user actions.
 
-![Sizaha App Screens: Login, Auth, and Confirmation](https://i.imgur.com/cf3KusT.png)
+![Sizaha App Screens: Login, Auth, and Confirmation](https://i.imgur.com/QpbZO6l.png)
 ![Sizaha App Screens: Start bootstrapping, activation, Boostrapping (coming soon)](https://i.imgur.com/16OfENn.png)
 
 ---
