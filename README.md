@@ -4,6 +4,8 @@
 
 ![Sizaha Smart Garage Door Opener product: Front View](https://i.imgur.com/zwA3dkd.png)
 
+![Demo](https://media.giphy.com/media/uFNChtAuJ71l1IAmvM/giphy.gif)
+
 -----
 
 ## **Sizaha Design**
