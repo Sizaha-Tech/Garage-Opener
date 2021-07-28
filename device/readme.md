@@ -1,6 +1,6 @@
-#Setting up Wireless AP
+Setting up Wireless AP
 
-##0. Configure Raspbian OS
+0. Configure Raspbian OS
     0.1. Brun the image
     0.2. Mount the image on PC/Mac. Add 'ssh' file to boot partition. That will start sshd on boot, so we can remotely connect to it.
     0.3. Reboot Pi, log in with ssh.
@@ -9,16 +9,16 @@
       to following: sizaha2020!
     0.5. 
 
-##1. Install missing OS packages:
+1. Install missing OS packages:
 
-    ### Armbian setup (Orange Pi):
+     Armbian setup (Orange Pi):
     sudo apt update && sudo apt --yes --force-yes install dnsmasq
-    ### sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd
+     sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd
 
     sudo apt --yes --force-yes install python3-dev python3-pip python3-venv
     sudo pip3 install setuptools distlib virtualenv
 
-    ### Raspian setup (Raspberry Pi)
+     Raspian setup (Raspberry Pi)
     1.1. Install NetworkManager:
        sudo apt update && sudo apt --yes --force-yes install dnsmasq hostapd \
             network-manager openvpn-systemd-resolved rng-tools lsof
@@ -31,7 +31,7 @@
     1.3. Reboot
        sudo reboot
 
-    ### Install Python goodies:
+     Install Python goodies:
     
     2.1. Get the latest pip:
         sudo apt --yes --force-yes install python3-distutils python3-venv
@@ -51,7 +51,7 @@
         pip3 install -r device/requirements.txt
 
 
-##Building and Running Docker image on Raspberry Pi (OBSOLETE)
+Building and Running Docker image on Raspberry Pi (OBSOLETE)
 
 Needs to be done on Raspberry Pi. 
 
