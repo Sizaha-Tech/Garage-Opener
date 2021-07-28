@@ -1,12 +1,15 @@
+from datetime import datetime, date, time, timezone
 import json
-from google.cloud import pubsub_v1
 import time
 import os
+
 import RPi.GPIO as GPIO
+from google.cloud import pubsub_v1
 
 
 SETTINGS_FILE = os.environ.get('SETTINGS_FILE')
 PROJECT_ID = "household-iot-277519"
+MAX_MSG_FRESHNESS_SEC = 30
 
 def open_garage():
     print('Opening garage door...')
@@ -26,6 +29,13 @@ def receive_messages(project_id, subscription_name):
     def callback(message):
         print('Received message: {}'.format(message))
         message.ack()
+        # TODO: Check that message.publish_time is not crazy.
+        if (datetime.now() - message.publish_time).total_seconds() > MAX_MSG_FRESHNESS_SEC:
+            print('Received a stale message, sent on {}.'.format(message.publish_time))
+            return
+
+        # TODO: Extract message.data and convert it to json.
+        payload = json.loads(message.data.decode('utf-8'))
         open_garage()
 
     subscriber.subscribe(subscription_path, callback=callback)
